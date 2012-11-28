@@ -1,0 +1,80 @@
+---
+layout: default
+title: Home
+---
+
+<h2>Credits</h2>
+
+<ul>
+<li>This project is a fork of the main JaCoCo project (<a href="https://github.com/jacoco/jacoco">https://github.com/jacoco/jacoco</a>)
+</ul>
+
+<h2>Download</h2>
+
+<ul><li>TODO</ul>
+
+<h2>User Guide</h2>
+
+<p>The new default filters listed under Features below are always enabled.
+
+<p>Source directives allow coverage to be turned on/off in arbitrary sections of code. The following directives are supported:
+
+<pre>
+///COVERAGE:OFF
+///COVERAGE:ON</pre>
+
+<p>To allow for easy migration from Clover the following directives are also recognised:
+
+<pre>
+///CLOVER:OFF
+///CLOVER:ON</pre>
+
+<p>Source directives are disabled by default. To enable them you must add a new section to your jacoco coverage ant task:
+
+<pre class="prettyprint lang-xml">
+&lt;jacoco:report&gt;
+  &lt;options&gt;
+    &lt;sourcedirectives/&gt;
+  &lt;/options&gt;
+  &lt;executiondata&gt;
+    &lt;file file="${result.exec.file}"/&gt;
+  &lt;/executiondata&gt;
+  &lt;structure name="JaCoCo Ant Example"&gt;
+    &lt;classfiles&gt;
+      &lt;fileset dir="${result.classes.dir}"/&gt;
+    &lt;/classfiles&gt;
+    &lt;sourcefiles encoding="UTF-8"&gt;
+      &lt;fileset dir="${src.dir}"/&gt;
+    &lt;/sourcefiles&gt;
+  &lt;/structure&gt;
+  &lt;html destdir="${result.report.dir}"/&gt;
+&lt;/jacoco:report&gt;</pre>
+
+<p>By default source directives will only be recognised when directives that turn off coverage are acomapnied by a comment e.g.
+
+<pre>///COVERAGE:OFF because the following code is too simple to bother unit testing.</pre>
+
+<p>This requirement can be disabled by adding an extra parameter to the ant task:
+
+<pre class="prettyprint lang-xml">
+  &lt;options&gt;
+    &lt;sourcedirectives requirecomment="false"/&gt;
+  &lt;/options&gt;
+</pre>
+
+<h2>Features</h2>
+
+<p>This fork adds the following:
+
+<ul>
+<li>New default filters which ignore elements of bytecode which are not useful in a coverage report:
+  <ul>
+  <li>Empty no args constructors including implicit no args constructors.
+  <li>Default enum methods - values() and valueOf().
+  <li>Synchronization exit.
+  </ul>
+<li>Arbitrary sections of source code can have coverage turned off using source directives.
+  <ul>
+  <li>Access to this feature can currently only be enabled from ant.
+  </ul>
+</ul>
