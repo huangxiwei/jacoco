@@ -488,5 +488,4 @@
 		<au:assertFileDoesntExist file="${temp.dir}/org.jacoco.ant/TestCoverageDisabled.java.html"/>
 	</target>
 
-	
 </project>
