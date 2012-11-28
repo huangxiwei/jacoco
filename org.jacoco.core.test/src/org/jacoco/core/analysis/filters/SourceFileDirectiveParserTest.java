@@ -35,19 +35,56 @@ public class SourceFileDirectiveParserTest {
 
 			public Reader getSourceFile(String packageName, String fileName)
 					throws IOException {
-				return new StringReader("\n" + "  ///JACOCO:OFF  \n" + "\n"
-						+ "  ///JACOCO:ON   \n");
+				return new StringReader("\n" + "  ///COVERAGE:OFF  \n" + "\n"
+						+ "  ///COVERAGE:ON   \n" + "\n" + " ///CLOVER:OFF  \n"
+						+ "\n" + "  ///CLOVER:ON  \n");
 			}
 		};
 		IDirectivesParser.SourceFileDirectivesParser parser = new IDirectivesParser.SourceFileDirectivesParser(
-				locator);
+				locator, false);
 		Queue<Directive> directives = parser.parseDirectives(null, null);
 
-		assertEquals(2, directives.size());
+		assertEquals(4, directives.size());
 		assertEquals(2, directives.peek().lineNum);
 		assertFalse(directives.peek().coverageOn);
 		directives.poll();
 		assertEquals(4, directives.peek().lineNum);
+		assertTrue(directives.peek().coverageOn);
+		directives.poll();
+		assertEquals(6, directives.peek().lineNum);
+		assertFalse(directives.peek().coverageOn);
+		directives.poll();
+		assertEquals(8, directives.peek().lineNum);
+		assertTrue(directives.peek().coverageOn);
+	}
+
+	@Test
+	public void testSourceParsingRequireComments() {
+		ISourceFileLocator locator = new ISourceFileLocator() {
+			public int getTabWidth() {
+				return 0;
+			}
+
+			public Reader getSourceFile(String packageName, String fileName)
+					throws IOException {
+				return new StringReader("\n" + "  ///COVERAGE:OFF  \n" + "\n"
+						+ "  ///COVERAGE:ON   \n" + "\n"
+						+ " ///COVERAGE:OFF because  \n" + "\n"
+						+ "  ///COVERAGE:ON  \n");
+			}
+		};
+		IDirectivesParser.SourceFileDirectivesParser parser = new IDirectivesParser.SourceFileDirectivesParser(
+				locator, true);
+		Queue<Directive> directives = parser.parseDirectives(null, null);
+
+		assertEquals(3, directives.size());
+		assertEquals(4, directives.peek().lineNum);
+		assertTrue(directives.peek().coverageOn);
+		directives.poll();
+		assertEquals(6, directives.peek().lineNum);
+		assertFalse(directives.peek().coverageOn);
+		directives.poll();
+		assertEquals(8, directives.peek().lineNum);
 		assertTrue(directives.peek().coverageOn);
 	}
 
@@ -64,7 +101,7 @@ public class SourceFileDirectiveParserTest {
 			}
 		};
 		IDirectivesParser.SourceFileDirectivesParser parser = new IDirectivesParser.SourceFileDirectivesParser(
-				locator);
+				locator, false);
 		Queue<Directive> directives = parser.parseDirectives(null, null);
 
 		assertEquals(0, directives.size());

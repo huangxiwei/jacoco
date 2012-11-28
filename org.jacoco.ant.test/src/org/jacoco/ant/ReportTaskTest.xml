@@ -409,6 +409,84 @@
 			<contains string="${testReportXmlEncoding.content}" substring="encoding=&quot;UTF-16&quot;"/>
 		</au:assertTrue>
 	</target>
+	
+	<!-- Options -->
+	
+	<target name="testReportCoverageDirectiveDefault">
+		<jacoco:report>
+			<structure name="Test">
+				<classfiles>
+					<fileset dir="${org.jacoco.ant.reportTaskTest.classes.dir}" includes="**/TestCoverageDisabled.class"/>
+				</classfiles>
+				<sourcefiles encoding="UTF-8">
+					<fileset dir="${org.jacoco.ant.reportTaskTest.sources.dir}" />
+				</sourcefiles>
+            </structure>
+			<html destdir="${temp.dir}"/>
+		</jacoco:report>
+		
+		<au:assertFileExists file="${temp.dir}/org.jacoco.ant/TestCoverageDisabled.java.html"/>
+	</target>
+	
+	<target name="testReportCoverageDirectiveEnabledMissingComments">
+		<jacoco:report>
+			<options>
+				<sourcedirectives />
+			</options>
+			
+			<structure name="Test">
+				<classfiles>
+					<fileset dir="${org.jacoco.ant.reportTaskTest.classes.dir}" includes="**/TestCoverageDisabled.class"/>
+				</classfiles>
+				<sourcefiles encoding="UTF-8">
+					<fileset dir="${org.jacoco.ant.reportTaskTest.sources.dir}" />
+				</sourcefiles>
+	        </structure>
+			<html destdir="${temp.dir}"/>
+		</jacoco:report>
+		
+		<au:assertFileExists file="${temp.dir}/org.jacoco.ant/TestCoverageDisabled.java.html"/>
+	</target>
+	
+	<target name="testReportCoverageDirectiveEnabledWithComments">
+		<jacoco:report>
+			<options>
+				<sourcedirectives />
+			</options>
+			
+			<structure name="Test">
+				<classfiles>
+					<fileset dir="${org.jacoco.ant.reportTaskTest.classes.dir}" includes="**/TestCoverageDisabledWithComment.class"/>
+				</classfiles>
+				<sourcefiles encoding="UTF-8">
+					<fileset dir="${org.jacoco.ant.reportTaskTest.sources.dir}" />
+				</sourcefiles>
+	        </structure>
+			<html destdir="${temp.dir}"/>
+		</jacoco:report>
+		
+		<au:assertFileDoesntExist file="${temp.dir}/org.jacoco.ant/TestCoverageDisabledWithComment.java.html"/>
+	</target>
+	
+	<target name="testReportCoverageDirectiveEnabledCommentsOptional">
+		<jacoco:report>
+			<options>
+				<sourcedirectives requirecomment="false"/>
+			</options>
+			
+			<structure name="Test">
+				<classfiles>
+					<fileset dir="${org.jacoco.ant.reportTaskTest.classes.dir}" includes="**/TestCoverageDisabled.class"/>
+				</classfiles>
+				<sourcefiles encoding="UTF-8">
+					<fileset dir="${org.jacoco.ant.reportTaskTest.sources.dir}" />
+				</sourcefiles>
+	        </structure>
+			<html destdir="${temp.dir}"/>
+		</jacoco:report>
+		
+		<au:assertFileDoesntExist file="${temp.dir}/org.jacoco.ant/TestCoverageDisabled.java.html"/>
+	</target>
 
 	
 </project>

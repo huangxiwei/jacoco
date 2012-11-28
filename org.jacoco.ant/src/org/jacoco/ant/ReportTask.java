@@ -519,8 +519,13 @@ public class ReportTask extends Task {
 		if (locator.isEmpty() || (options.sourcedirectivesElement == null)) {
 			analyzer = new Analyzer(executionDataStore, builder);
 		} else {
+			boolean requireComments = true;
+			if ((options.sourcedirectivesElement != null)
+					&& (!options.sourcedirectivesElement.requirecomment)) {
+				requireComments = false;
+			}
 			final IDirectivesParser parser = new IDirectivesParser.SourceFileDirectivesParser(
-					locator);
+					locator, requireComments);
 			analyzer = new Analyzer(executionDataStore, builder, parser);
 		}
 		for (final Iterator<?> i = group.classfiles.iterator(); i.hasNext();) {
