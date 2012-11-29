@@ -1,0 +1,155 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../../.resources/report.css" type="text/css"/><link rel="shortcut icon" href="../../.resources/report.gif" type="image/gif"/><title>IDirectivesParser.java</title><link rel="stylesheet" href="../../.resources/prettify.css" type="text/css"/><script type="text/javascript" src="../../.resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="right"><a href="../../.sessions.html" class="el_session">Sessions</a></span><a href="../../index.html" class="el_report">JaCoCo</a> &gt; <a href="../index.html" class="el_bundle">org.jacoco.core</a> &gt; <a href="index.html" class="el_package">org.jacoco.core.analysis</a> &gt; <span class="el_source">IDirectivesParser.java</span></div><h1>IDirectivesParser.java</h1><pre class="source lang-java linenums">/*******************************************************************************
+ * Copyright (c) 2009, 2012 Mountainminds GmbH &amp; Co. KG and Contributors
+ * All rights reserved. This program and the accompanying materials
+ * are made available under the terms of the Eclipse Public License v1.0
+ * which accompanies this distribution, and is available at
+ * http://www.eclipse.org/legal/epl-v10.html
+ *
+ * Contributors:
+ *    Martin Hare Robertson - initial API and implementation
+ *    
+ *******************************************************************************/
+package org.jacoco.core.analysis;
+
+import java.io.BufferedReader;
+import java.io.IOException;
+import java.io.Reader;
+import java.util.Collections;
+import java.util.HashSet;
+import java.util.LinkedList;
+import java.util.Queue;
+import java.util.Set;
+
+import org.jacoco.core.data.ISourceFileLocator;
+
+/**
+ * Parser of coverage directives
+ */
+public interface IDirectivesParser {
+
+	/**
+	 * Data class representing a directive
+	 */
+	public static class Directive {
+		/**
+		 * @param lineNum
+		 * @param coverageOn
+		 */
+<span class="fc" id="L38">		public Directive(final int lineNum, final boolean coverageOn) {</span>
+<span class="fc" id="L39">			this.lineNum = lineNum;</span>
+<span class="fc" id="L40">			this.coverageOn = coverageOn;</span>
+<span class="fc" id="L41">		}</span>
+
+		/**
+		 * Line number of the directive
+		 */
+		public final int lineNum;
+		/**
+		 * Whether to switch coverage on/off
+		 */
+		public final boolean coverageOn;
+	}
+
+	/**
+	 * Parser for directives in source code
+	 */
+<span class="fc" id="L56">	public static class SourceFileDirectivesParser implements IDirectivesParser {</span>
+		private static final Set&lt;String&gt; ON_DIRECTIVES;
+		private static final Set&lt;String&gt; OFF_DIRECTIVES;
+		static {
+<span class="fc" id="L60">			final Set&lt;String&gt; onDirectives = new HashSet&lt;String&gt;();</span>
+<span class="fc" id="L61">			onDirectives.add(&quot;///CLOVER:ON&quot;);</span>
+<span class="fc" id="L62">			onDirectives.add(&quot;///COVERAGE:ON&quot;);</span>
+<span class="fc" id="L63">			ON_DIRECTIVES = Collections.unmodifiableSet(onDirectives);</span>
+
+<span class="fc" id="L65">			final Set&lt;String&gt; offDirectives = new HashSet&lt;String&gt;();</span>
+<span class="fc" id="L66">			offDirectives.add(&quot;///CLOVER:OFF&quot;);</span>
+<span class="fc" id="L67">			offDirectives.add(&quot;///COVERAGE:OFF&quot;);</span>
+<span class="fc" id="L68">			OFF_DIRECTIVES = Collections.unmodifiableSet(offDirectives);</span>
+		}
+
+		private final ISourceFileLocator sourceLocator;
+		private final boolean requireComment;
+
+		/**
+		 * @param sourceLocator
+		 *            Object for locating source code
+		 * @param requireComment
+		 *            If true, only off directives with a comment will be
+		 *            recognised
+		 */
+<span class="fc" id="L81">		public SourceFileDirectivesParser(</span>
+				final ISourceFileLocator sourceLocator,
+				final boolean requireComment) {
+<span class="fc" id="L84">			this.sourceLocator = sourceLocator;</span>
+<span class="fc" id="L85">			this.requireComment = requireComment;</span>
+<span class="fc" id="L86">		}</span>
+
+		public Queue&lt;Directive&gt; parseDirectives(final String packageName,
+				final String sourceFilename) {
+<span class="fc" id="L90">			final Queue&lt;Directive&gt; directives = new LinkedList&lt;Directive&gt;();</span>
+
+			try {
+<span class="fc" id="L93">				final Reader sourceReader = sourceLocator.getSourceFile(</span>
+<span class="fc" id="L94">						packageName, sourceFilename);</span>
+
+<span class="fc bfc" id="L96" title="All 2 branches covered.">				if (sourceReader != null) {</span>
+<span class="fc" id="L97">					final BufferedReader bufSourceReader = new BufferedReader(</span>
+<span class="fc" id="L98">							sourceReader);</span>
+					try {
+<span class="fc" id="L100">						int lineNum = 1;</span>
+						String line;
+<span class="fc bfc" id="L102" title="All 2 branches covered.">						while ((line = bufSourceReader.readLine()) != null) {</span>
+<span class="fc" id="L103">							final String trimmedLine = line.trim();</span>
+
+<span class="fc" id="L105">							boolean foundDirective = false;</span>
+<span class="fc bfc" id="L106" title="All 2 branches covered.">							for (final String offDirective : OFF_DIRECTIVES) {</span>
+<span class="fc bfc" id="L107" title="All 2 branches covered.">								if (trimmedLine.startsWith(offDirective)) {</span>
+<span class="fc bfc" id="L108" title="All 2 branches covered.">									if (!requireComment</span>
+<span class="fc" id="L109">											|| (trimmedLine.length() &gt; offDirective</span>
+<span class="fc bfc" id="L110" title="All 2 branches covered.">													.length())) {</span>
+										// Either no comment is required or
+										// there is a comment
+<span class="fc" id="L113">										directives.add(new Directive(lineNum,</span>
+<span class="fc" id="L114">												false));</span>
+<span class="fc" id="L115">										foundDirective = true;</span>
+<span class="fc" id="L116">										break;</span>
+									}
+								}
+							}
+
+<span class="fc bfc" id="L121" title="All 2 branches covered.">							if (!foundDirective) {</span>
+<span class="fc bfc" id="L122" title="All 2 branches covered.">								for (final String onDirective : ON_DIRECTIVES) {</span>
+<span class="fc bfc" id="L123" title="All 2 branches covered.">									if (trimmedLine.startsWith(onDirective)) {</span>
+<span class="fc" id="L124">										directives.add(new Directive(lineNum,</span>
+<span class="fc" id="L125">												true));</span>
+									}
+								}
+							}
+
+<span class="fc" id="L130">							lineNum++;</span>
+						}
+<span class="nc" id="L132">					} finally {</span>
+<span class="pc" id="L133">						bufSourceReader.close();</span>
+<span class="nc" id="L134">					}</span>
+				}
+<span class="nc" id="L136">			} catch (final IOException e) {</span>
+<span class="nc" id="L137">				throw new RuntimeException(e);</span>
+			}
+
+<span class="fc" id="L140">			return directives;</span>
+		}
+
+	}
+
+	/**
+	 * Return coverage directives associated with the specified className
+	 * 
+	 * @param packageName
+	 * @param sourceFilename
+	 * @return Queue of directives in the order which they apply.
+	 */
+	public Queue&lt;IDirectivesParser.Directive&gt; parseDirectives(
+			String packageName, String sourceFilename);
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.eclemma.org/jacoco">JaCoCo</a> 0.6.1.201211282358</span>Code Coverage Report for JaCoCo 0.6.1-SNAPSHOT</div></body></html>

@@ -1,0 +1,331 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../../.resources/report.css" type="text/css"/><link rel="shortcut icon" href="../../.resources/report.gif" type="image/gif"/><title>MethodAnalyzer.java</title><link rel="stylesheet" href="../../.resources/prettify.css" type="text/css"/><script type="text/javascript" src="../../.resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="right"><a href="../../.sessions.html" class="el_session">Sessions</a></span><a href="../../index.html" class="el_report">JaCoCo</a> &gt; <a href="../index.html" class="el_bundle">org.jacoco.core</a> &gt; <a href="index.html" class="el_package">org.jacoco.core.internal.analysis</a> &gt; <span class="el_source">MethodAnalyzer.java</span></div><h1>MethodAnalyzer.java</h1><pre class="source lang-java linenums">/*******************************************************************************
+ * Copyright (c) 2009, 2012 Mountainminds GmbH &amp; Co. KG and Contributors
+ * All rights reserved. This program and the accompanying materials
+ * are made available under the terms of the Eclipse Public License v1.0
+ * which accompanies this distribution, and is available at
+ * http://www.eclipse.org/legal/epl-v10.html
+ *
+ * Contributors:
+ *    Marc R. Hoffmann - initial API and implementation
+ *    Martin Hare Robertson - filters
+ *    
+ *******************************************************************************/
+package org.jacoco.core.internal.analysis;
+
+import java.util.ArrayList;
+import java.util.List;
+
+import org.jacoco.core.analysis.ICounter;
+import org.jacoco.core.analysis.IMethodCoverage;
+import org.jacoco.core.analysis.ISourceNode;
+import org.jacoco.core.internal.analysis.filters.ICoverageFilterStatus;
+import org.jacoco.core.internal.flow.Instruction;
+import org.jacoco.core.internal.flow.LabelInfo;
+import org.jacoco.core.internal.flow.MethodProbesVisitor;
+import org.objectweb.asm.Handle;
+import org.objectweb.asm.Label;
+
+/**
+ * A {@link MethodProbesVisitor} that analyzes which statements and branches of
+ * a method has been executed based on given probe data.
+ */
+public class MethodAnalyzer extends MethodProbesVisitor {
+
+	private final boolean[] executionData;
+
+	private final ICoverageFilterStatus coverageFilterStatus;
+
+	private final MethodCoverageImpl coverage;
+
+<span class="fc" id="L40">	private int currentLine = ISourceNode.UNKNOWN_LINE;</span>
+
+<span class="fc" id="L42">	private int firstLine = ISourceNode.UNKNOWN_LINE;</span>
+
+<span class="fc" id="L44">	private int lastLine = ISourceNode.UNKNOWN_LINE;</span>
+
+	// Due to ASM issue #315745 there can be more than one label per instruction
+<span class="fc" id="L47">	private final List&lt;Label&gt; currentLabel = new ArrayList&lt;Label&gt;(2);</span>
+
+	/** List of all analyzed instructions */
+<span class="fc" id="L50">	private final List&lt;Instruction&gt; instructions = new ArrayList&lt;Instruction&gt;();</span>
+
+	/** List of all predecessors of covered probes */
+<span class="fc" id="L53">	private final List&lt;Instruction&gt; coveredProbes = new ArrayList&lt;Instruction&gt;();</span>
+
+	/** List of all jumps encountered */
+<span class="fc" id="L56">	private final List&lt;Jump&gt; jumps = new ArrayList&lt;Jump&gt;();</span>
+
+	/** Last instruction in byte code sequence */
+	private Instruction lastInsn;
+
+	/**
+	 * New Method analyzer for the given probe data.
+	 * 
+	 * @param name
+	 *            method name
+	 * @param desc
+	 *            description of the method
+	 * @param signature
+	 *            optional parameterized signature
+	 * 
+	 * @param executionData
+	 *            recorded probe date of the containing class or
+	 *            &lt;code&gt;null&lt;/code&gt; if the class is not executed at all
+	 * @param coverageFilterStatus
+	 *            filter which restricts the coverage data
+	 */
+	public MethodAnalyzer(final String name, final String desc,
+			final String signature, final boolean[] executionData,
+			final ICoverageFilterStatus coverageFilterStatus) {
+<span class="fc" id="L80">		super();</span>
+<span class="fc" id="L81">		this.executionData = executionData;</span>
+<span class="fc" id="L82">		this.coverageFilterStatus = coverageFilterStatus;</span>
+<span class="fc" id="L83">		this.coverage = new MethodCoverageImpl(name, desc, signature);</span>
+<span class="fc" id="L84">	}</span>
+
+	/**
+	 * Returns the coverage data for this method after this visitor has been
+	 * processed.
+	 * 
+	 * @return coverage data for this method
+	 */
+	public IMethodCoverage getCoverage() {
+<span class="fc" id="L93">		return coverage;</span>
+	}
+
+	@Override
+	public void visitLabel(final Label label) {
+<span class="fc" id="L98">		currentLabel.add(label);</span>
+<span class="fc bfc" id="L99" title="All 2 branches covered.">		if (!LabelInfo.isSuccessor(label)) {</span>
+<span class="fc" id="L100">			lastInsn = null;</span>
+		}
+<span class="fc" id="L102">	}</span>
+
+	@Override
+	public void visitLineNumber(final int line, final Label start) {
+<span class="fc" id="L106">		currentLine = line;</span>
+<span class="fc bfc" id="L107" title="All 4 branches covered.">		if (firstLine &gt; line || lastLine == ISourceNode.UNKNOWN_LINE) {</span>
+<span class="fc" id="L108">			firstLine = line;</span>
+		}
+<span class="fc bfc" id="L110" title="All 2 branches covered.">		if (lastLine &lt; line) {</span>
+<span class="fc" id="L111">			lastLine = line;</span>
+		}
+<span class="fc" id="L113">	}</span>
+
+	private void visitInsn() {
+<span class="fc" id="L116">		final Instruction insn = new Instruction(currentLine,</span>
+<span class="fc" id="L117">				coverageFilterStatus.enabled());</span>
+<span class="fc" id="L118">		instructions.add(insn);</span>
+<span class="fc bfc" id="L119" title="All 2 branches covered.">		if (lastInsn != null) {</span>
+<span class="fc" id="L120">			insn.setPredecessor(lastInsn);</span>
+		}
+<span class="fc" id="L122">		final int labelCount = currentLabel.size();</span>
+<span class="fc bfc" id="L123" title="All 2 branches covered.">		if (labelCount &gt; 0) {</span>
+<span class="fc bfc" id="L124" title="All 2 branches covered.">			for (int i = labelCount; --i &gt;= 0;) {</span>
+<span class="fc" id="L125">				LabelInfo.setInstruction(currentLabel.get(i), insn);</span>
+			}
+<span class="fc" id="L127">			currentLabel.clear();</span>
+		}
+<span class="fc" id="L129">		lastInsn = insn;</span>
+<span class="fc" id="L130">	}</span>
+
+	@Override
+	public void visitInsn(final int opcode) {
+<span class="fc" id="L134">		visitInsn();</span>
+<span class="fc" id="L135">	}</span>
+
+	@Override
+	public void visitIntInsn(final int opcode, final int operand) {
+<span class="fc" id="L139">		visitInsn();</span>
+<span class="fc" id="L140">	}</span>
+
+	@Override
+	public void visitVarInsn(final int opcode, final int var) {
+<span class="fc" id="L144">		visitInsn();</span>
+<span class="fc" id="L145">	}</span>
+
+	@Override
+	public void visitTypeInsn(final int opcode, final String type) {
+<span class="fc" id="L149">		visitInsn();</span>
+<span class="fc" id="L150">	}</span>
+
+	@Override
+	public void visitFieldInsn(final int opcode, final String owner,
+			final String name, final String desc) {
+<span class="fc" id="L155">		visitInsn();</span>
+<span class="fc" id="L156">	}</span>
+
+	@Override
+	public void visitMethodInsn(final int opcode, final String owner,
+			final String name, final String desc) {
+<span class="fc" id="L161">		visitInsn();</span>
+<span class="fc" id="L162">	}</span>
+
+	@Override
+	public void visitInvokeDynamicInsn(final String name, final String desc,
+			final Handle bsm, final Object... bsmArgs) {
+<span class="nc" id="L167">		visitInsn();</span>
+<span class="nc" id="L168">	}</span>
+
+	@Override
+	public void visitJumpInsn(final int opcode, final Label label) {
+<span class="fc" id="L172">		visitInsn();</span>
+<span class="fc" id="L173">		jumps.add(new Jump(lastInsn, label));</span>
+<span class="fc" id="L174">	}</span>
+
+	@Override
+	public void visitLdcInsn(final Object cst) {
+<span class="fc" id="L178">		visitInsn();</span>
+<span class="fc" id="L179">	}</span>
+
+	@Override
+	public void visitIincInsn(final int var, final int increment) {
+<span class="fc" id="L183">		visitInsn();</span>
+<span class="fc" id="L184">	}</span>
+
+	@Override
+	public void visitTableSwitchInsn(final int min, final int max,
+			final Label dflt, final Label... labels) {
+<span class="fc" id="L189">		visitSwitchInsn(dflt, labels);</span>
+<span class="fc" id="L190">	}</span>
+
+	@Override
+	public void visitLookupSwitchInsn(final Label dflt, final int[] keys,
+			final Label[] labels) {
+<span class="fc" id="L195">		visitSwitchInsn(dflt, labels);</span>
+<span class="fc" id="L196">	}</span>
+
+	private void visitSwitchInsn(final Label dflt, final Label[] labels) {
+<span class="fc" id="L199">		visitInsn();</span>
+<span class="fc" id="L200">		LabelInfo.resetDone(labels);</span>
+<span class="fc" id="L201">		jumps.add(new Jump(lastInsn, dflt));</span>
+<span class="fc" id="L202">		LabelInfo.setDone(dflt);</span>
+<span class="fc bfc" id="L203" title="All 2 branches covered.">		for (final Label l : labels) {</span>
+<span class="fc bfc" id="L204" title="All 2 branches covered.">			if (!LabelInfo.isDone(l)) {</span>
+<span class="fc" id="L205">				jumps.add(new Jump(lastInsn, l));</span>
+<span class="fc" id="L206">				LabelInfo.setDone(l);</span>
+			}
+		}
+<span class="fc" id="L209">	}</span>
+
+	@Override
+	public void visitMultiANewArrayInsn(final String desc, final int dims) {
+<span class="nc" id="L213">		visitInsn();</span>
+<span class="nc" id="L214">	}</span>
+
+	@Override
+	public void visitProbe(final int probeId) {
+<span class="fc" id="L218">		addProbe(probeId);</span>
+<span class="fc" id="L219">		lastInsn = null;</span>
+<span class="fc" id="L220">	}</span>
+
+	@Override
+	public void visitJumpInsnWithProbe(final int opcode, final Label label,
+			final int probeId) {
+<span class="fc" id="L225">		visitInsn();</span>
+<span class="fc" id="L226">		addProbe(probeId);</span>
+<span class="fc" id="L227">	}</span>
+
+	@Override
+	public void visitInsnWithProbe(final int opcode, final int probeId) {
+<span class="fc" id="L231">		visitInsn();</span>
+<span class="fc" id="L232">		addProbe(probeId);</span>
+<span class="fc" id="L233">	}</span>
+
+	@Override
+	public void visitTableSwitchInsnWithProbes(final int min, final int max,
+			final Label dflt, final Label[] labels) {
+<span class="fc" id="L238">		visitSwitchInsnWithProbes(dflt, labels);</span>
+<span class="fc" id="L239">	}</span>
+
+	@Override
+	public void visitLookupSwitchInsnWithProbes(final Label dflt,
+			final int[] keys, final Label[] labels) {
+<span class="fc" id="L244">		visitSwitchInsnWithProbes(dflt, labels);</span>
+<span class="fc" id="L245">	}</span>
+
+	private void visitSwitchInsnWithProbes(final Label dflt,
+			final Label[] labels) {
+<span class="fc" id="L249">		visitInsn();</span>
+<span class="fc" id="L250">		LabelInfo.resetDone(dflt);</span>
+<span class="fc" id="L251">		LabelInfo.resetDone(labels);</span>
+<span class="fc" id="L252">		visitSwitchTarget(dflt);</span>
+<span class="fc bfc" id="L253" title="All 2 branches covered.">		for (final Label l : labels) {</span>
+<span class="fc" id="L254">			visitSwitchTarget(l);</span>
+		}
+<span class="fc" id="L256">	}</span>
+
+	private void visitSwitchTarget(final Label label) {
+<span class="fc" id="L259">		final int id = LabelInfo.getProbeId(label);</span>
+<span class="fc bfc" id="L260" title="All 2 branches covered.">		if (!LabelInfo.isDone(label)) {</span>
+<span class="fc bfc" id="L261" title="All 2 branches covered.">			if (id == LabelInfo.NO_PROBE) {</span>
+<span class="fc" id="L262">				jumps.add(new Jump(lastInsn, label));</span>
+			} else {
+<span class="fc" id="L264">				addProbe(id);</span>
+			}
+<span class="fc" id="L266">			LabelInfo.setDone(label);</span>
+		}
+<span class="fc" id="L268">	}</span>
+
+	@Override
+	public void visitEnd() {
+		// Wire jumps:
+<span class="fc bfc" id="L273" title="All 2 branches covered.">		for (final Jump j : jumps) {</span>
+<span class="fc" id="L274">			LabelInfo.getInstruction(j.target).setPredecessor(j.source);</span>
+		}
+		// Propagate probe values:
+<span class="fc bfc" id="L277" title="All 2 branches covered.">		for (final Instruction p : coveredProbes) {</span>
+<span class="fc" id="L278">			p.setCovered();</span>
+		}
+		// Report result:
+<span class="fc" id="L281">		coverage.ensureCapacity(firstLine, lastLine);</span>
+<span class="fc bfc" id="L282" title="All 2 branches covered.">		for (final Instruction i : instructions) {</span>
+<span class="fc" id="L283">			final int total = i.getBranches();</span>
+<span class="fc" id="L284">			final int covered = i.getCoveredBranches();</span>
+<span class="fc" id="L285">			final boolean coverageEnabled = i.isCoverageEnabled();</span>
+			final ICounter instrCounter;
+<span class="fc bfc" id="L287" title="All 2 branches covered.">			if (!coverageEnabled) {</span>
+<span class="fc" id="L288">				instrCounter = CounterImpl.COUNTER_0_0;</span>
+<span class="fc bfc" id="L289" title="All 2 branches covered.">			} else if (covered &gt; 0) {</span>
+<span class="fc" id="L290">				instrCounter = CounterImpl.COUNTER_0_1;</span>
+			} else {
+<span class="fc" id="L292">				instrCounter = CounterImpl.COUNTER_1_0;</span>
+			}
+			final ICounter branchCounter;
+<span class="fc bfc" id="L295" title="All 2 branches covered.">			if (total &gt; 1) {</span>
+<span class="fc bfc" id="L296" title="All 2 branches covered.">				if (!coverageEnabled) {</span>
+<span class="fc" id="L297">					branchCounter = CounterImpl.getInstance(0, 0);</span>
+				} else {
+<span class="fc" id="L299">					branchCounter = CounterImpl.getInstance(total - covered,</span>
+<span class="fc" id="L300">							covered);</span>
+				}
+			} else {
+<span class="fc" id="L303">				branchCounter = CounterImpl.COUNTER_0_0;</span>
+			}
+<span class="fc" id="L305">			coverage.increment(instrCounter, branchCounter, i.getLine());</span>
+		}
+<span class="fc" id="L307">		coverage.incrementMethodCounter();</span>
+<span class="fc" id="L308">	}</span>
+
+	private void addProbe(final int probeId) {
+<span class="pc bpc" id="L311" title="1 of 2 branches missed.">		if (lastInsn != null) {</span>
+<span class="fc" id="L312">			lastInsn.addBranch();</span>
+<span class="fc bfc" id="L313" title="All 4 branches covered.">			if (executionData != null &amp;&amp; executionData[probeId]) {</span>
+<span class="fc" id="L314">				coveredProbes.add(lastInsn);</span>
+			}
+		}
+<span class="fc" id="L317">	}</span>
+
+	private static class Jump {
+
+		final Instruction source;
+		final Label target;
+
+<span class="fc" id="L324">		Jump(final Instruction source, final Label target) {</span>
+<span class="fc" id="L325">			this.source = source;</span>
+<span class="fc" id="L326">			this.target = target;</span>
+<span class="fc" id="L327">		}</span>
+	}
+
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.eclemma.org/jacoco">JaCoCo</a> 0.6.1.201211282358</span>Code Coverage Report for JaCoCo 0.6.1-SNAPSHOT</div></body></html>

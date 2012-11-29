@@ -1,0 +1,163 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../../.resources/report.css" type="text/css"/><link rel="shortcut icon" href="../../.resources/report.gif" type="image/gif"/><title>ProbeInserter.java</title><link rel="stylesheet" href="../../.resources/prettify.css" type="text/css"/><script type="text/javascript" src="../../.resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="right"><a href="../../.sessions.html" class="el_session">Sessions</a></span><a href="../../index.html" class="el_report">JaCoCo</a> &gt; <a href="../index.html" class="el_bundle">org.jacoco.core</a> &gt; <a href="index.html" class="el_package">org.jacoco.core.internal.instr</a> &gt; <span class="el_source">ProbeInserter.java</span></div><h1>ProbeInserter.java</h1><pre class="source lang-java linenums">/*******************************************************************************
+ * Copyright (c) 2009, 2012 Mountainminds GmbH &amp; Co. KG and Contributors
+ * All rights reserved. This program and the accompanying materials
+ * are made available under the terms of the Eclipse Public License v1.0
+ * which accompanies this distribution, and is available at
+ * http://www.eclipse.org/legal/epl-v10.html
+ *
+ * Contributors:
+ *    Marc R. Hoffmann - initial API and implementation
+ *    
+ *******************************************************************************/
+package org.jacoco.core.internal.instr;
+
+import org.objectweb.asm.Label;
+import org.objectweb.asm.MethodVisitor;
+import org.objectweb.asm.Opcodes;
+import org.objectweb.asm.Type;
+
+/**
+ * Internal utility to add probes into the control flow of a method. The code
+ * for a probe simply sets a certain slot of a boolean array to true. In
+ * addition the probe array has to be retrieved at the beginning of the method
+ * and stored in a local variable.
+ */
+class ProbeInserter extends MethodVisitor implements IProbeInserter {
+
+	private final IProbeArrayStrategy arrayStrategy;
+
+	/** Position of the inserted variable. */
+	private final int variable;
+
+	/** Index the inserted variable. */
+	private final int variableIdx;
+
+	/** Maximum stack usage of the code to access the probe array. */
+	private int accessorStackSize;
+
+	/**
+	 * Creates a new {@link ProbeInserter}.
+	 * 
+	 * @param access
+	 *            access flags of the adapted method.
+	 * @param desc
+	 *            the method's descriptor
+	 * @param mv
+	 *            the method visitor to which this adapter delegates calls
+	 * @param arrayStrategy
+	 *            callback to create the code that retrieves the reference to
+	 *            the probe array
+	 */
+	ProbeInserter(final int access, final String desc, final MethodVisitor mv,
+			final IProbeArrayStrategy arrayStrategy) {
+<span class="fc" id="L53">		super(Opcodes.ASM4, mv);</span>
+<span class="fc" id="L54">		this.arrayStrategy = arrayStrategy;</span>
+<span class="fc bfc" id="L55" title="All 2 branches covered.">		int idx = (Opcodes.ACC_STATIC &amp; access) == 0 ? 1 : 0;</span>
+<span class="fc" id="L56">		int pos = idx;</span>
+<span class="fc bfc" id="L57" title="All 2 branches covered.">		for (final Type t : Type.getArgumentTypes(desc)) {</span>
+<span class="fc" id="L58">			idx++;</span>
+<span class="fc" id="L59">			pos += t.getSize();</span>
+		}
+<span class="fc" id="L61">		variableIdx = idx;</span>
+<span class="fc" id="L62">		variable = pos;</span>
+<span class="fc" id="L63">	}</span>
+
+	public void insertProbe(final int id) {
+
+		// For a probe we set the corresponding position in the boolean[] array
+		// to true.
+
+<span class="fc" id="L70">		mv.visitVarInsn(Opcodes.ALOAD, variable);</span>
+
+		// Stack[0]: [Z
+
+<span class="fc" id="L74">		InstrSupport.push(mv, id);</span>
+
+		// Stack[1]: I
+		// Stack[0]: [Z
+
+<span class="fc" id="L79">		mv.visitInsn(Opcodes.ICONST_1);</span>
+
+		// Stack[2]: I
+		// Stack[1]: I
+		// Stack[0]: [Z
+
+<span class="fc" id="L85">		mv.visitInsn(Opcodes.BASTORE);</span>
+<span class="fc" id="L86">	}</span>
+
+	@Override
+	public void visitCode() {
+<span class="fc" id="L90">		accessorStackSize = arrayStrategy.storeInstance(mv, variable);</span>
+<span class="fc" id="L91">		mv.visitCode();</span>
+<span class="fc" id="L92">	}</span>
+
+	@Override
+	public final void visitVarInsn(final int opcode, final int var) {
+<span class="fc" id="L96">		mv.visitVarInsn(opcode, map(var));</span>
+<span class="fc" id="L97">	}</span>
+
+	@Override
+	public final void visitIincInsn(final int var, final int increment) {
+<span class="fc" id="L101">		mv.visitIincInsn(map(var), increment);</span>
+<span class="fc" id="L102">	}</span>
+
+	@Override
+	public final void visitLocalVariable(final String name, final String desc,
+			final String signature, final Label start, final Label end,
+			final int index) {
+<span class="fc" id="L108">		mv.visitLocalVariable(name, desc, signature, start, end, map(index));</span>
+<span class="fc" id="L109">	}</span>
+
+	@Override
+	public final void visitFieldInsn(final int opcode, final String owner,
+			final String name, final String desc) {
+<span class="fc" id="L114">		mv.visitFieldInsn(opcode, owner, name, desc);</span>
+<span class="fc" id="L115">	}</span>
+
+	@Override
+	public void visitMaxs(final int maxStack, final int maxLocals) {
+		// Max stack size of the probe code is 3 which can add to the
+		// original stack size depending on the probe locations. The accessor
+		// stack size is an absolute maximum, as the accessor code is inserted
+		// at the very beginning of each method when the stack size is empty.
+<span class="fc" id="L123">		final int increasedStack = Math.max(maxStack + 3, accessorStackSize);</span>
+<span class="fc" id="L124">		mv.visitMaxs(increasedStack, maxLocals + 1);</span>
+<span class="fc" id="L125">	}</span>
+
+	private int map(final int var) {
+<span class="fc bfc" id="L128" title="All 2 branches covered.">		if (var &lt; variable) {</span>
+<span class="fc" id="L129">			return var;</span>
+		} else {
+<span class="fc" id="L131">			return var + 1;</span>
+		}
+	}
+
+	@Override
+	public final void visitFrame(final int type, final int nLocal,
+			final Object[] local, final int nStack, final Object[] stack) {
+
+<span class="fc bfc" id="L139" title="All 2 branches covered.">		if (type != Opcodes.F_NEW) { // uncompressed frame</span>
+<span class="fc" id="L140">			throw new IllegalArgumentException(</span>
+<span class="fc" id="L141">					&quot;ClassReader.accept() should be called with EXPAND_FRAMES flag&quot;);</span>
+		}
+
+<span class="fc" id="L144">		final int n = Math.max(nLocal, variableIdx) + 1;</span>
+<span class="fc" id="L145">		final Object[] newLocal = new Object[n];</span>
+<span class="fc bfc" id="L146" title="All 2 branches covered.">		for (int i = 0; i &lt; n; i++) {</span>
+<span class="fc bfc" id="L147" title="All 2 branches covered.">			if (i &lt; variableIdx) {</span>
+				// For dead code it is possible to specify less locals than
+				// we have method parameters.
+<span class="fc bfc" id="L150" title="All 2 branches covered.">				newLocal[i] = i &lt; nLocal ? local[i] : Opcodes.TOP;</span>
+<span class="fc" id="L151">				continue;</span>
+			}
+<span class="fc bfc" id="L153" title="All 2 branches covered.">			if (i &gt; variableIdx) {</span>
+<span class="fc" id="L154">				newLocal[i] = local[i - 1];</span>
+<span class="fc" id="L155">				continue;</span>
+			}
+<span class="fc" id="L157">			newLocal[i] = InstrSupport.DATAFIELD_DESC;</span>
+		}
+<span class="fc" id="L159">		mv.visitFrame(type, n, newLocal, nStack, stack);</span>
+<span class="fc" id="L160">	}</span>
+
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.eclemma.org/jacoco">JaCoCo</a> 0.6.1.201211282358</span>Code Coverage Report for JaCoCo 0.6.1-SNAPSHOT</div></body></html>

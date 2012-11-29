@@ -1,0 +1,323 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../../.resources/report.css" type="text/css"/><link rel="shortcut icon" href="../../.resources/report.gif" type="image/gif"/><title>SynchronizedExitCoverageFilter.java</title><link rel="stylesheet" href="../../.resources/prettify.css" type="text/css"/><script type="text/javascript" src="../../.resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="right"><a href="../../.sessions.html" class="el_session">Sessions</a></span><a href="../../index.html" class="el_report">JaCoCo</a> &gt; <a href="../index.html" class="el_bundle">org.jacoco.core</a> &gt; <a href="index.html" class="el_package">org.jacoco.core.internal.analysis.filters</a> &gt; <span class="el_source">SynchronizedExitCoverageFilter.java</span></div><h1>SynchronizedExitCoverageFilter.java</h1><pre class="source lang-java linenums">/*******************************************************************************
+ * Copyright (c) 2009, 2012 Mountainminds GmbH &amp; Co. KG and Contributors
+ * All rights reserved. This program and the accompanying materials
+ * are made available under the terms of the Eclipse Public License v1.0
+ * which accompanies this distribution, and is available at
+ * http://www.eclipse.org/legal/epl-v10.html
+ *
+ * Contributors:
+ *    Martin Hare Robertson - initial API and implementation
+ *    
+ *******************************************************************************/
+package org.jacoco.core.internal.analysis.filters;
+
+import java.util.HashSet;
+import java.util.LinkedList;
+import java.util.Set;
+
+import org.jacoco.core.internal.analysis.filters.ICoverageFilterStatus.ICoverageFilter;
+import org.jacoco.core.internal.flow.MethodProbesVisitor;
+import org.objectweb.asm.AnnotationVisitor;
+import org.objectweb.asm.Attribute;
+import org.objectweb.asm.ClassVisitor;
+import org.objectweb.asm.Handle;
+import org.objectweb.asm.Label;
+import org.objectweb.asm.MethodVisitor;
+import org.objectweb.asm.Opcodes;
+
+/**
+ * Filter that disabled coverage tracking of the exception exit branch from
+ * synchronized blocks
+ */
+<span class="fc" id="L32">public class SynchronizedExitCoverageFilter implements ICoverageFilter {</span>
+
+<span class="fc" id="L34">	private static enum State {</span>
+<span class="fc" id="L35">		START, HANDLER, MONITEREXIT;</span>
+	}
+
+<span class="fc" id="L38">	private final LinkedList&lt;Boolean&gt; handlerEnabled = new LinkedList&lt;Boolean&gt;();</span>
+<span class="fc" id="L39">	private boolean enabled = true;</span>
+<span class="fc" id="L40">	private State syncExitState = State.START;</span>
+
+	public boolean enabled() {
+<span class="fc" id="L43">		return enabled;</span>
+	}
+
+	public boolean includeClass(final String className) {
+<span class="fc" id="L47">		return true;</span>
+	}
+
+	public ClassVisitor visitClass(final ClassVisitor delegate) {
+<span class="fc" id="L51">		return delegate;</span>
+	}
+
+	public MethodVisitor preVisitMethod(final String name, final String desc,
+			final MethodVisitor delegate) {
+<span class="fc" id="L56">		enabled = true;</span>
+<span class="fc" id="L57">		handlerEnabled.clear();</span>
+<span class="fc" id="L58">		return new SyncAnalyzerVisitor(delegate);</span>
+	}
+
+	private class SyncAnalyzerVisitor extends MethodVisitor {
+<span class="fc" id="L62">		private final Set&lt;Label&gt; handlers = new HashSet&lt;Label&gt;();</span>
+
+<span class="fc" id="L64">		private SyncAnalyzerVisitor(final MethodVisitor delegate) {</span>
+<span class="fc" id="L65">			super(Opcodes.ASM4, delegate);</span>
+<span class="fc" id="L66">		}</span>
+
+		@Override
+		public void visitTryCatchBlock(final Label start, final Label end,
+				final Label handler, final String type) {
+<span class="fc bfc" id="L71" title="All 2 branches covered.">			if (type == null) {</span>
+<span class="fc" id="L72">				handlers.add(handler);</span>
+			}
+<span class="fc" id="L74">			syncExitState = State.START;</span>
+<span class="fc" id="L75">			super.visitTryCatchBlock(start, end, handler, type);</span>
+<span class="fc" id="L76">		}</span>
+
+		@Override
+		public void visitLabel(final Label label) {
+<span class="fc bfc" id="L80" title="All 4 branches covered.">			if ((syncExitState == State.START) &amp;&amp; handlers.contains(label)) {</span>
+<span class="fc" id="L81">				handlerEnabled.addLast(Boolean.TRUE);</span>
+<span class="fc" id="L82">				syncExitState = State.HANDLER;</span>
+			}
+<span class="fc" id="L84">			super.visitLabel(label);</span>
+<span class="fc" id="L85">		}</span>
+
+		@Override
+		public void visitVarInsn(final int opcode, final int var) {
+<span class="pc bpc" id="L89" title="1 of 4 branches missed.">			if (((syncExitState == State.HANDLER) || (syncExitState == State.MONITEREXIT))</span>
+<span class="pc bpc" id="L90" title="1 of 4 branches missed.">					&amp;&amp; ((opcode == Opcodes.ALOAD) || (opcode == Opcodes.ASTORE))) {</span>
+				// Ignore
+			} else {
+<span class="fc" id="L93">				syncExitState = State.START;</span>
+			}
+<span class="fc" id="L95">			super.visitVarInsn(opcode, var);</span>
+<span class="fc" id="L96">		}</span>
+
+		@Override
+		public void visitInsn(final int opcode) {
+<span class="fc bfc" id="L100" title="All 2 branches covered.">			if ((syncExitState == State.HANDLER)</span>
+<span class="pc bpc" id="L101" title="1 of 2 branches missed.">					&amp;&amp; Opcodes.MONITOREXIT == opcode) {</span>
+<span class="fc" id="L102">				syncExitState = State.MONITEREXIT;</span>
+<span class="fc bfc" id="L103" title="All 2 branches covered.">			} else if ((syncExitState == State.MONITEREXIT)</span>
+<span class="pc bpc" id="L104" title="1 of 2 branches missed.">					&amp;&amp; Opcodes.ATHROW == opcode) {</span>
+<span class="fc" id="L105">				handlerEnabled.removeLast();</span>
+<span class="fc" id="L106">				handlerEnabled.addLast(Boolean.FALSE);</span>
+<span class="fc" id="L107">				syncExitState = State.START;</span>
+			}
+<span class="fc" id="L109">			super.visitInsn(opcode);</span>
+<span class="fc" id="L110">		}</span>
+
+		@Override
+		public void visitMethodInsn(final int opcode, final String owner,
+				final String name, final String desc) {
+<span class="fc" id="L115">			syncExitState = State.START;</span>
+<span class="fc" id="L116">			super.visitMethodInsn(opcode, owner, name, desc);</span>
+<span class="fc" id="L117">		}</span>
+
+		@Override
+		public AnnotationVisitor visitAnnotation(final String desc,
+				final boolean visible) {
+<span class="nc" id="L122">			syncExitState = State.START;</span>
+<span class="nc" id="L123">			return super.visitAnnotation(desc, visible);</span>
+		}
+
+		@Override
+		public AnnotationVisitor visitAnnotationDefault() {
+<span class="nc" id="L128">			syncExitState = State.START;</span>
+<span class="nc" id="L129">			return super.visitAnnotationDefault();</span>
+		}
+
+		@Override
+		public void visitAttribute(final Attribute attr) {
+<span class="nc" id="L134">			syncExitState = State.START;</span>
+<span class="nc" id="L135">			super.visitAttribute(attr);</span>
+<span class="nc" id="L136">		}</span>
+
+		@Override
+		public void visitCode() {
+			// syncExitState = State.START;
+<span class="nc" id="L141">			super.visitCode();</span>
+<span class="nc" id="L142">		}</span>
+
+		@Override
+		public void visitEnd() {
+			// syncExitState = State.START;
+<span class="nc" id="L147">			super.visitEnd();</span>
+<span class="nc" id="L148">		}</span>
+
+		@Override
+		public void visitFieldInsn(final int opcode, final String owner,
+				final String name, final String desc) {
+<span class="fc" id="L153">			syncExitState = State.START;</span>
+<span class="fc" id="L154">			super.visitFieldInsn(opcode, owner, name, desc);</span>
+<span class="fc" id="L155">		}</span>
+
+		@Override
+		public void visitFrame(final int type, final int nLocal,
+				final Object[] local, final int nStack, final Object[] stack) {
+			// syncExitState = State.START;
+<span class="nc" id="L161">			super.visitFrame(type, nLocal, local, nStack, stack);</span>
+<span class="nc" id="L162">		}</span>
+
+		@Override
+		public void visitIincInsn(final int var, final int increment) {
+<span class="fc" id="L166">			syncExitState = State.START;</span>
+<span class="fc" id="L167">			super.visitIincInsn(var, increment);</span>
+<span class="fc" id="L168">		}</span>
+
+		@Override
+		public void visitIntInsn(final int opcode, final int operand) {
+<span class="fc" id="L172">			syncExitState = State.START;</span>
+<span class="fc" id="L173">			super.visitIntInsn(opcode, operand);</span>
+<span class="fc" id="L174">		}</span>
+
+		@Override
+		public void visitInvokeDynamicInsn(final String name,
+				final String desc, final Handle bsm, final Object... bsmArgs) {
+<span class="nc" id="L179">			syncExitState = State.START;</span>
+<span class="nc" id="L180">			super.visitInvokeDynamicInsn(name, desc, bsm, bsmArgs);</span>
+<span class="nc" id="L181">		}</span>
+
+		@Override
+		public void visitJumpInsn(final int opcode, final Label label) {
+<span class="fc" id="L185">			syncExitState = State.START;</span>
+<span class="fc" id="L186">			super.visitJumpInsn(opcode, label);</span>
+<span class="fc" id="L187">		}</span>
+
+		@Override
+		public void visitLdcInsn(final Object cst) {
+<span class="fc" id="L191">			syncExitState = State.START;</span>
+<span class="fc" id="L192">			super.visitLdcInsn(cst);</span>
+<span class="fc" id="L193">		}</span>
+
+		@Override
+		public void visitLineNumber(final int line, final Label start) {
+			// syncExitState = State.START;
+<span class="fc" id="L198">			super.visitLineNumber(line, start);</span>
+<span class="fc" id="L199">		}</span>
+
+		@Override
+		public void visitLocalVariable(final String name, final String desc,
+				final String signature, final Label start, final Label end,
+				final int index) {
+			// syncExitState = State.START;
+<span class="nc" id="L206">			super.visitLocalVariable(name, desc, signature, start, end, index);</span>
+<span class="nc" id="L207">		}</span>
+
+		@Override
+		public void visitLookupSwitchInsn(final Label dflt, final int[] keys,
+				final Label[] labels) {
+<span class="fc" id="L212">			syncExitState = State.START;</span>
+<span class="fc" id="L213">			super.visitLookupSwitchInsn(dflt, keys, labels);</span>
+<span class="fc" id="L214">		}</span>
+
+		@Override
+		public void visitMaxs(final int maxStack, final int maxLocals) {
+			// syncExitState = State.START;
+<span class="nc" id="L219">			super.visitMaxs(maxStack, maxLocals);</span>
+<span class="nc" id="L220">		}</span>
+
+		@Override
+		public void visitMultiANewArrayInsn(final String desc, final int dims) {
+<span class="nc" id="L224">			syncExitState = State.START;</span>
+<span class="nc" id="L225">			super.visitMultiANewArrayInsn(desc, dims);</span>
+<span class="nc" id="L226">		}</span>
+
+		@Override
+		public AnnotationVisitor visitParameterAnnotation(final int parameter,
+				final String desc, final boolean visible) {
+<span class="nc" id="L231">			syncExitState = State.START;</span>
+<span class="nc" id="L232">			return super.visitParameterAnnotation(parameter, desc, visible);</span>
+		}
+
+		@Override
+		public void visitTableSwitchInsn(final int min, final int max,
+				final Label dflt, final Label... labels) {
+<span class="fc" id="L238">			syncExitState = State.START;</span>
+<span class="fc" id="L239">			super.visitTableSwitchInsn(min, max, dflt, labels);</span>
+<span class="fc" id="L240">		}</span>
+
+		@Override
+		public void visitTypeInsn(final int opcode, final String type) {
+<span class="fc" id="L244">			syncExitState = State.START;</span>
+<span class="fc" id="L245">			super.visitTypeInsn(opcode, type);</span>
+<span class="fc" id="L246">		}</span>
+	}
+
+	public MethodProbesVisitor visitMethod(final String name,
+			final String desc, final MethodProbesVisitor delegate) {
+<span class="fc" id="L251">		return new SyncFilterVisitor(delegate);</span>
+	}
+
+	private class SyncFilterVisitor extends MethodProbesVisitor {
+<span class="fc" id="L255">		private final Set&lt;Label&gt; handlers = new HashSet&lt;Label&gt;();</span>
+		private final MethodProbesVisitor delegate;
+
+<span class="fc" id="L258">		private SyncFilterVisitor(final MethodProbesVisitor delegate) {</span>
+<span class="fc" id="L259">			super(delegate);</span>
+<span class="fc" id="L260">			this.delegate = delegate;</span>
+<span class="fc" id="L261">		}</span>
+
+		@Override
+		public void visitTryCatchBlock(final Label start, final Label end,
+				final Label handler, final String type) {
+<span class="fc bfc" id="L266" title="All 2 branches covered.">			if (type == null) {</span>
+<span class="fc" id="L267">				handlers.add(handler);</span>
+			}
+<span class="fc" id="L269">			super.visitTryCatchBlock(start, end, handler, type);</span>
+<span class="fc" id="L270">		}</span>
+
+		@Override
+		public void visitLabel(final Label label) {
+<span class="fc bfc" id="L274" title="All 2 branches covered.">			if (handlers.contains(label)) {</span>
+<span class="fc" id="L275">				enabled = Boolean.TRUE.equals(handlerEnabled.removeFirst());</span>
+			}
+<span class="fc" id="L277">			super.visitLabel(label);</span>
+<span class="fc" id="L278">		}</span>
+
+		@Override
+		public void visitInsn(final int opcode) {
+<span class="pc bpc" id="L282" title="1 of 4 branches missed.">			if (!enabled &amp;&amp; (opcode == Opcodes.ATHROW)) {</span>
+<span class="nc" id="L283">				enabled = true;</span>
+			}
+<span class="fc" id="L285">			super.visitInsn(opcode);</span>
+<span class="fc" id="L286">		}</span>
+
+		// --- Simple methods that pass on to the delegate ---
+
+		@Override
+		public void visitProbe(final int probeId) {
+<span class="fc" id="L292">			delegate.visitProbe(probeId);</span>
+<span class="fc" id="L293">		}</span>
+
+		@Override
+		public void visitJumpInsnWithProbe(final int opcode, final Label label,
+				final int probeId) {
+<span class="fc" id="L298">			delegate.visitJumpInsnWithProbe(opcode, label, probeId);</span>
+<span class="fc" id="L299">		}</span>
+
+		@Override
+		public void visitInsnWithProbe(final int opcode, final int probeId) {
+<span class="fc" id="L303">			delegate.visitInsnWithProbe(opcode, probeId);</span>
+<span class="pc bpc" id="L304" title="1 of 4 branches missed.">			if (!enabled &amp;&amp; (opcode == Opcodes.ATHROW)) {</span>
+<span class="fc" id="L305">				enabled = true;</span>
+			}
+<span class="fc" id="L307">		}</span>
+
+		@Override
+		public void visitTableSwitchInsnWithProbes(final int min,
+				final int max, final Label dflt, final Label[] labels) {
+<span class="fc" id="L312">			delegate.visitTableSwitchInsnWithProbes(min, max, dflt, labels);</span>
+<span class="fc" id="L313">		}</span>
+
+		@Override
+		public void visitLookupSwitchInsnWithProbes(final Label dflt,
+				final int[] keys, final Label[] labels) {
+<span class="fc" id="L318">			delegate.visitLookupSwitchInsnWithProbes(dflt, keys, labels);</span>
+<span class="fc" id="L319">		}</span>
+	}
+
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.eclemma.org/jacoco">JaCoCo</a> 0.6.1.201211282358</span>Code Coverage Report for JaCoCo 0.6.1-SNAPSHOT</div></body></html>

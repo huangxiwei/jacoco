@@ -1,0 +1,250 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../../.resources/report.css" type="text/css"/><link rel="shortcut icon" href="../../.resources/report.gif" type="image/gif"/><title>EmptyConstructorCoverageFilter.java</title><link rel="stylesheet" href="../../.resources/prettify.css" type="text/css"/><script type="text/javascript" src="../../.resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="right"><a href="../../.sessions.html" class="el_session">Sessions</a></span><a href="../../index.html" class="el_report">JaCoCo</a> &gt; <a href="../index.html" class="el_bundle">org.jacoco.core</a> &gt; <a href="index.html" class="el_package">org.jacoco.core.internal.analysis.filters</a> &gt; <span class="el_source">EmptyConstructorCoverageFilter.java</span></div><h1>EmptyConstructorCoverageFilter.java</h1><pre class="source lang-java linenums">/*******************************************************************************
+ * Copyright (c) 2009, 2012 Mountainminds GmbH &amp; Co. KG and Contributors
+ * All rights reserved. This program and the accompanying materials
+ * are made available under the terms of the Eclipse Public License v1.0
+ * which accompanies this distribution, and is available at
+ * http://www.eclipse.org/legal/epl-v10.html
+ *
+ * Contributors:
+ *    Martin Hare Robertson - initial API and implementation
+ *    
+ *******************************************************************************/
+package org.jacoco.core.internal.analysis.filters;
+
+import org.jacoco.core.internal.analysis.filters.ICoverageFilterStatus.ICoverageFilter;
+import org.jacoco.core.internal.flow.MethodProbesVisitor;
+import org.objectweb.asm.AnnotationVisitor;
+import org.objectweb.asm.Attribute;
+import org.objectweb.asm.ClassVisitor;
+import org.objectweb.asm.Handle;
+import org.objectweb.asm.Label;
+import org.objectweb.asm.MethodVisitor;
+import org.objectweb.asm.Opcodes;
+
+/**
+ * Disable coverage of empty constructors
+ */
+<span class="fc" id="L27">public class EmptyConstructorCoverageFilter implements ICoverageFilter {</span>
+
+<span class="fc" id="L29">	private static enum State {</span>
+<span class="fc" id="L30">		START, ALOAD0, SUPER, EMPTY, NOT_EMPTY;</span>
+	}
+
+<span class="fc" id="L33">	private boolean enabled = true;</span>
+<span class="fc" id="L34">	private State methodState = State.START;</span>
+
+	public boolean enabled() {
+<span class="fc" id="L37">		return enabled;</span>
+	}
+
+	public boolean includeClass(final String className) {
+<span class="fc" id="L41">		return true;</span>
+	}
+
+	public ClassVisitor visitClass(final ClassVisitor delegate) {
+<span class="fc" id="L45">		return delegate;</span>
+	}
+
+	public MethodVisitor preVisitMethod(final String name, final String desc,
+			final MethodVisitor delegate) {
+<span class="fc" id="L50">		methodState = State.START;</span>
+<span class="fc bfc" id="L51" title="All 4 branches covered.">		if (&quot;&lt;init&gt;&quot;.equals(name) &amp;&amp; &quot;()V&quot;.equals(desc)) {</span>
+<span class="fc" id="L52">			return new EmptyMethodVisitor(delegate);</span>
+		} else {
+<span class="fc" id="L54">			return delegate;</span>
+		}
+	}
+
+	private class EmptyMethodVisitor extends MethodVisitor {
+<span class="fc" id="L59">		private EmptyMethodVisitor(final MethodVisitor delegate) {</span>
+<span class="fc" id="L60">			super(Opcodes.ASM4, delegate);</span>
+<span class="fc" id="L61">		}</span>
+
+		@Override
+		public void visitVarInsn(final int opcode, final int var) {
+<span class="pc bpc" id="L65" title="1 of 4 branches missed.">			if ((methodState == State.START) &amp;&amp; (opcode == Opcodes.ALOAD)</span>
+<span class="pc bpc" id="L66" title="1 of 2 branches missed.">					&amp;&amp; (var == 0)) {</span>
+<span class="fc" id="L67">				methodState = State.ALOAD0;</span>
+			} else {
+<span class="fc" id="L69">				methodState = State.NOT_EMPTY;</span>
+			}
+<span class="fc" id="L71">			super.visitVarInsn(opcode, var);</span>
+<span class="fc" id="L72">		}</span>
+
+		@Override
+		public void visitMethodInsn(final int opcode, final String owner,
+				final String name, final String desc) {
+<span class="fc bfc" id="L77" title="All 2 branches covered.">			if ((methodState == State.ALOAD0)</span>
+<span class="fc bfc" id="L78" title="All 2 branches covered.">					&amp;&amp; (opcode == Opcodes.INVOKESPECIAL)</span>
+<span class="pc bpc" id="L79" title="2 of 4 branches missed.">					&amp;&amp; (&quot;&lt;init&gt;&quot;.equals(name)) &amp;&amp; (&quot;()V&quot;.equals(desc))) {</span>
+<span class="fc" id="L80">				methodState = State.SUPER;</span>
+			} else {
+<span class="fc" id="L82">				methodState = State.NOT_EMPTY;</span>
+			}
+<span class="fc" id="L84">			super.visitMethodInsn(opcode, owner, name, desc);</span>
+<span class="fc" id="L85">		}</span>
+
+		@Override
+		public void visitInsn(final int opcode) {
+<span class="pc bpc" id="L89" title="1 of 4 branches missed.">			if ((methodState == State.SUPER) &amp;&amp; Opcodes.RETURN == opcode) {</span>
+<span class="fc" id="L90">				methodState = State.EMPTY;</span>
+			} else {
+<span class="fc" id="L92">				methodState = State.NOT_EMPTY;</span>
+			}
+<span class="fc" id="L94">			super.visitInsn(opcode);</span>
+<span class="fc" id="L95">		}</span>
+
+		@Override
+		public AnnotationVisitor visitAnnotation(final String desc,
+				final boolean visible) {
+<span class="nc" id="L100">			methodState = State.NOT_EMPTY;</span>
+<span class="nc" id="L101">			return super.visitAnnotation(desc, visible);</span>
+		}
+
+		@Override
+		public AnnotationVisitor visitAnnotationDefault() {
+<span class="nc" id="L106">			methodState = State.NOT_EMPTY;</span>
+<span class="nc" id="L107">			return super.visitAnnotationDefault();</span>
+		}
+
+		@Override
+		public void visitAttribute(final Attribute attr) {
+<span class="nc" id="L112">			methodState = State.NOT_EMPTY;</span>
+<span class="nc" id="L113">			super.visitAttribute(attr);</span>
+<span class="nc" id="L114">		}</span>
+
+		@Override
+		public void visitCode() {
+			// methodState = State.NOT_EMPTY;
+<span class="nc" id="L119">			super.visitCode();</span>
+<span class="nc" id="L120">		}</span>
+
+		@Override
+		public void visitEnd() {
+			// methodState = State.NOT_EMPTY;
+<span class="nc" id="L125">			super.visitEnd();</span>
+<span class="nc" id="L126">		}</span>
+
+		@Override
+		public void visitFieldInsn(final int opcode, final String owner,
+				final String name, final String desc) {
+<span class="fc" id="L131">			methodState = State.NOT_EMPTY;</span>
+<span class="fc" id="L132">			super.visitFieldInsn(opcode, owner, name, desc);</span>
+<span class="fc" id="L133">		}</span>
+
+		@Override
+		public void visitFrame(final int type, final int nLocal,
+				final Object[] local, final int nStack, final Object[] stack) {
+<span class="nc" id="L138">			methodState = State.NOT_EMPTY;</span>
+<span class="nc" id="L139">			super.visitFrame(type, nLocal, local, nStack, stack);</span>
+<span class="nc" id="L140">		}</span>
+
+		@Override
+		public void visitIincInsn(final int var, final int increment) {
+<span class="nc" id="L144">			methodState = State.NOT_EMPTY;</span>
+<span class="nc" id="L145">			super.visitIincInsn(var, increment);</span>
+<span class="nc" id="L146">		}</span>
+
+		@Override
+		public void visitIntInsn(final int opcode, final int operand) {
+<span class="fc" id="L150">			methodState = State.NOT_EMPTY;</span>
+<span class="fc" id="L151">			super.visitIntInsn(opcode, operand);</span>
+<span class="fc" id="L152">		}</span>
+
+		@Override
+		public void visitInvokeDynamicInsn(final String name,
+				final String desc, final Handle bsm, final Object... bsmArgs) {
+<span class="nc" id="L157">			methodState = State.NOT_EMPTY;</span>
+<span class="nc" id="L158">			super.visitInvokeDynamicInsn(name, desc, bsm, bsmArgs);</span>
+<span class="nc" id="L159">		}</span>
+
+		@Override
+		public void visitJumpInsn(final int opcode, final Label label) {
+<span class="fc" id="L163">			methodState = State.NOT_EMPTY;</span>
+<span class="fc" id="L164">			super.visitJumpInsn(opcode, label);</span>
+<span class="fc" id="L165">		}</span>
+
+		@Override
+		public void visitLabel(final Label label) {
+			// methodState = State.NOT_EMPTY;
+<span class="fc" id="L170">			super.visitLabel(label);</span>
+<span class="fc" id="L171">		}</span>
+
+		@Override
+		public void visitLdcInsn(final Object cst) {
+<span class="nc" id="L175">			methodState = State.NOT_EMPTY;</span>
+<span class="nc" id="L176">			super.visitLdcInsn(cst);</span>
+<span class="nc" id="L177">		}</span>
+
+		@Override
+		public void visitLineNumber(final int line, final Label start) {
+			// methodState = State.NOT_EMPTY;
+<span class="fc" id="L182">			super.visitLineNumber(line, start);</span>
+<span class="fc" id="L183">		}</span>
+
+		@Override
+		public void visitLocalVariable(final String name, final String desc,
+				final String signature, final Label start, final Label end,
+				final int index) {
+			// methodState = State.NOT_EMPTY;
+<span class="nc" id="L190">			super.visitLocalVariable(name, desc, signature, start, end, index);</span>
+<span class="nc" id="L191">		}</span>
+
+		@Override
+		public void visitLookupSwitchInsn(final Label dflt, final int[] keys,
+				final Label[] labels) {
+<span class="nc" id="L196">			methodState = State.NOT_EMPTY;</span>
+<span class="nc" id="L197">			super.visitLookupSwitchInsn(dflt, keys, labels);</span>
+<span class="nc" id="L198">		}</span>
+
+		@Override
+		public void visitMaxs(final int maxStack, final int maxLocals) {
+			// methodState = State.NOT_EMPTY;
+<span class="nc" id="L203">			super.visitMaxs(maxStack, maxLocals);</span>
+<span class="nc" id="L204">		}</span>
+
+		@Override
+		public void visitMultiANewArrayInsn(final String desc, final int dims) {
+<span class="nc" id="L208">			methodState = State.NOT_EMPTY;</span>
+<span class="nc" id="L209">			super.visitMultiANewArrayInsn(desc, dims);</span>
+<span class="nc" id="L210">		}</span>
+
+		@Override
+		public AnnotationVisitor visitParameterAnnotation(final int parameter,
+				final String desc, final boolean visible) {
+<span class="nc" id="L215">			methodState = State.NOT_EMPTY;</span>
+<span class="nc" id="L216">			return super.visitParameterAnnotation(parameter, desc, visible);</span>
+		}
+
+		@Override
+		public void visitTableSwitchInsn(final int min, final int max,
+				final Label dflt, final Label... labels) {
+<span class="nc" id="L222">			methodState = State.NOT_EMPTY;</span>
+<span class="nc" id="L223">			super.visitTableSwitchInsn(min, max, dflt, labels);</span>
+<span class="nc" id="L224">		}</span>
+
+		@Override
+		public void visitTryCatchBlock(final Label start, final Label end,
+				final Label handler, final String type) {
+<span class="nc" id="L229">			methodState = State.NOT_EMPTY;</span>
+<span class="nc" id="L230">			super.visitTryCatchBlock(start, end, handler, type);</span>
+<span class="nc" id="L231">		}</span>
+
+		@Override
+		public void visitTypeInsn(final int opcode, final String type) {
+<span class="fc" id="L235">			methodState = State.NOT_EMPTY;</span>
+<span class="fc" id="L236">			super.visitTypeInsn(opcode, type);</span>
+<span class="fc" id="L237">		}</span>
+	}
+
+	public MethodProbesVisitor visitMethod(final String name,
+			final String desc, final MethodProbesVisitor delegate) {
+<span class="fc bfc" id="L242" title="All 2 branches covered.">		if (methodState == State.EMPTY) {</span>
+<span class="fc" id="L243">			enabled = false;</span>
+		} else {
+<span class="fc" id="L245">			enabled = true;</span>
+		}
+<span class="fc" id="L247">		return delegate;</span>
+	}
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.eclemma.org/jacoco">JaCoCo</a> 0.6.1.201211282358</span>Code Coverage Report for JaCoCo 0.6.1-SNAPSHOT</div></body></html>
