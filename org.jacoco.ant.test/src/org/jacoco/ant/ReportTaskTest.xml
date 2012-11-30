@@ -23,8 +23,7 @@
 
 	<target name="tearDown">
 		<delete dir="${temp.dir}" quiet="false" failonerror="true" />
-	</target>
-	
+	</target>	
 	
 	<target name="testReportNoStructureElement">
 		<au:expectfailure expectedMessage="Group name must be supplied">
@@ -466,6 +465,26 @@
 		</jacoco:report>
 		
 		<au:assertFileDoesntExist file="${temp.dir}/org.jacoco.ant/TestCoverageDisabledWithComment.java.html"/>
+	</target>
+	
+	<target name="testReportCoverageDirectiveEnabledWithCommentsInner">
+		<jacoco:report>
+			<options>
+				<sourcedirectives />
+			</options>
+			
+			<structure name="Test">
+				<classfiles>
+					<fileset dir="${org.jacoco.ant.reportTaskTest.classes.dir}" includes="**/TestCoverageDisabledInnerWithComment*"/>
+				</classfiles>
+				<sourcefiles encoding="UTF-8">
+					<fileset dir="${org.jacoco.ant.reportTaskTest.sources.dir}" />
+				</sourcefiles>
+	        </structure>
+			<html destdir="${temp.dir}"/>
+		</jacoco:report>
+		
+		<au:assertFileDoesntExist file="${temp.dir}/org.jacoco.ant/TestCoverageDisabledInnerWithComment.java.html"/>
 	</target>
 	
 	<target name="testReportCoverageDirectiveEnabledCommentsOptional">

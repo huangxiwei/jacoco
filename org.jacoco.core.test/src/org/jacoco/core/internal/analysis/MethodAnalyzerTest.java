@@ -124,6 +124,18 @@ public class MethodAnalyzerTest implements IProbeIdGenerator {
 	}
 
 	@Test
+	public void testLinearSequenceCoverageMultipleDirectivesDisabled() {
+		createLinearSequence();
+		coverageDirectives.add(new Directive(10, false));
+		coverageDirectives.add(new Directive(20, true));
+		coverageDirectives.add(new Directive(30, false));
+		runMethodAnalzerWithCoverageDirectivesFilter();
+
+		assertLine(1001, 0, 0, 0, 0);
+		assertLine(1002, 0, 0, 0, 0);
+	}
+
+	@Test
 	public void testLinearSequenceCoverageNoDirectives() {
 		createLinearSequence();
 		runMethodAnalzerWithCoverageDirectivesFilter();

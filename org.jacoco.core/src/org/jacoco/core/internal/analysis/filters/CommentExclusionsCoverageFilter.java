@@ -110,7 +110,7 @@ public class CommentExclusionsCoverageFilter implements ICoverageFilter {
 
 		@Override
 		public void visitLineNumber(final int line, final Label start) {
-			if ((nextDirective != null) && (nextDirective.lineNum <= line)) {
+			while ((nextDirective != null) && (nextDirective.lineNum <= line)) {
 				enabled = nextDirective.coverageOn;
 				nextDirective = directives.poll();
 			}
