@@ -1,3 +1,14 @@
+/*******************************************************************************
+ * Copyright (c) 2009, 2012 Mountainminds GmbH & Co. KG and Contributors
+ * All rights reserved. This program and the accompanying materials
+ * are made available under the terms of the Eclipse Public License v1.0
+ * which accompanies this distribution, and is available at
+ * http://www.eclipse.org/legal/epl-v10.html
+ *
+ * Contributors:
+ *    Martin Hare Robertson - initial API and implementation
+ *    
+ *******************************************************************************/
 package org.jacoco.ant;
 
 import static java.lang.String.format;
@@ -49,27 +60,39 @@ public class InstrumentTask extends Task {
 		final IRuntime runtime = new LoggerRuntime();
 		final Instrumenter instrumenter = new Instrumenter(runtime);
 
+		int instrCount = 0;
+
 		for (final Iterator<?> i = classfiles.iterator(); i.hasNext();) {
 			final Resource resource = (Resource) i.next();
-			log(format("Instrumenting class file %s", resource));
-			InputStream in = null;
-			try {
-				in = resource.getInputStream();
-				final byte[] instrumentedClassBytes = instrumenter
-						.instrument(in);
-				final File instrumentedClassFile = new File(destDir,
-						resource.getName());
-				final FileOutputStream fileOut = new FileOutputStream(
-						instrumentedClassFile);
-				fileOut.write(instrumentedClassBytes);
-				fileOut.flush();
-				fileOut.close();
-			} catch (final IOException e) {
-				throw new BuildException(format("Unable to read class file %s",
-						resource), e, getLocation());
-			} finally {
-				FileUtils.close(in);
+
+			if (resource.getName().endsWith(".class")) {
+				InputStream in = null;
+				try {
+					final File instrumentedClassFile = new File(destDir,
+							resource.getName());
+					instrumentedClassFile.getParentFile().mkdirs();
+
+					in = resource.getInputStream();
+
+					final byte[] instrumentedClassBytes = instrumenter
+							.instrument(in);
+					final FileOutputStream fileOut = new FileOutputStream(
+							instrumentedClassFile);
+					fileOut.write(instrumentedClassBytes);
+					fileOut.flush();
+					fileOut.close();
+
+					instrCount++;
+				} catch (final IOException e) {
+					throw new BuildException(format(
+							"Unable to read class file %s", resource), e,
+							getLocation());
+				} finally {
+					FileUtils.close(in);
+				}
 			}
 		}
+
+		log(format("Instrumented %s classes", Integer.toString(instrCount)));
 	}
 }
