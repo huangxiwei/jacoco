@@ -225,7 +225,7 @@ public class MethodAnalyzerTest implements IProbeIdGenerator {
 		runMethodAnalzerWithCoverageDirectivesFilter();
 		assertEquals(2, nextProbeId);
 
-		assertLine(1001, 0, 2, 1, 1);
+		assertLine(1001, 0, 2, 0, 0);
 		assertLine(1002, 0, 2, 0, 0);
 		assertLine(1003, 0, 0, 0, 0);
 	}
@@ -496,6 +496,23 @@ public class MethodAnalyzerTest implements IProbeIdGenerator {
 		assertLine(1005, 0, 1, 0, 0);
 		assertLine(1006, 0, 2, 0, 0);
 		assertLine(1007, 0, 2, 0, 0);
+	}
+
+	@Test
+	public void testTableSwitchDefaultCoverageDisabled() {
+		createTableSwitch();
+		coverageDirectives.add(new Directive(1006, false));
+		coverageDirectives.add(new Directive(1007, true));
+		runMethodAnalzerWithCoverageDirectivesFilter();
+		assertEquals(4, nextProbeId);
+
+		assertLine(1001, 2, 0, 2, 0);
+		assertLine(1002, 2, 0, 0, 0);
+		assertLine(1003, 1, 0, 0, 0);
+		assertLine(1004, 2, 0, 0, 0);
+		assertLine(1005, 1, 0, 0, 0);
+		assertLine(1006, 0, 0, 0, 0);
+		assertLine(1007, 2, 0, 0, 0);
 	}
 
 	// === Scenario: table switch with merge ===

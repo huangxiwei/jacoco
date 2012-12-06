@@ -48,6 +48,11 @@ public interface IDirectivesParser {
 		 * Whether to switch coverage on/off
 		 */
 		public final boolean coverageOn;
+
+		@Override
+		public String toString() {
+			return lineNum + ":" + coverageOn;
+		}
 	}
 
 	/**

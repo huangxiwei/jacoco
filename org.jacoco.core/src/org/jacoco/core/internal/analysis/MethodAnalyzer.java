@@ -52,6 +52,9 @@ public class MethodAnalyzer extends MethodProbesVisitor {
 	/** List of all predecessors of covered probes */
 	private final List<Instruction> coveredProbes = new ArrayList<Instruction>();
 
+	/** List of all predecessors of disabled probes */
+	private final List<Instruction> disabledProbes = new ArrayList<Instruction>();
+
 	/** List of all jumps encountered */
 	private final List<Jump> jumps = new ArrayList<Jump>();
 
@@ -277,6 +280,9 @@ public class MethodAnalyzer extends MethodProbesVisitor {
 		for (final Instruction p : coveredProbes) {
 			p.setCovered();
 		}
+		for (final Instruction p : disabledProbes) {
+			p.setDisabled();
+		}
 		// Report result:
 		coverage.ensureCapacity(firstLine, lastLine);
 		for (final Instruction i : instructions) {
@@ -292,13 +298,9 @@ public class MethodAnalyzer extends MethodProbesVisitor {
 				instrCounter = CounterImpl.COUNTER_1_0;
 			}
 			final ICounter branchCounter;
-			if (total > 1) {
-				if (!coverageEnabled) {
-					branchCounter = CounterImpl.getInstance(0, 0);
-				} else {
-					branchCounter = CounterImpl.getInstance(total - covered,
-							covered);
-				}
+			if ((total > 1) && coverageEnabled) {
+				branchCounter = CounterImpl.getInstance(total - covered,
+						covered);
 			} else {
 				branchCounter = CounterImpl.COUNTER_0_0;
 			}
@@ -310,8 +312,12 @@ public class MethodAnalyzer extends MethodProbesVisitor {
 	private void addProbe(final int probeId) {
 		if (lastInsn != null) {
 			lastInsn.addBranch();
-			if (executionData != null && executionData[probeId]) {
-				coveredProbes.add(lastInsn);
+			if (lastInsn.isCoverageEnabled()) {
+				if (executionData != null && executionData[probeId]) {
+					coveredProbes.add(lastInsn);
+				}
+			} else {
+				disabledProbes.add(lastInsn);
 			}
 		}
 	}

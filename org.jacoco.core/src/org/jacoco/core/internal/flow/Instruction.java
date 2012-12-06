@@ -74,6 +74,19 @@ public class Instruction {
 	}
 
 	/**
+	 * Resets the number of branches for this instruction to zero. Also
+	 * recursively updates all previous instructions to have one less branch.
+	 */
+	public void setDisabled() {
+		for (Instruction i = this; i != null; i = i.predecessor) {
+			if (i.branches > 1) {
+				i.branches--;
+				break;
+			}
+		}
+	}
+
+	/**
 	 * Returns the source line this instruction belongs to.
 	 * 
 	 * @return corresponding source line
@@ -106,5 +119,4 @@ public class Instruction {
 	public boolean isCoverageEnabled() {
 		return coverageEnabled;
 	}
-
 }
