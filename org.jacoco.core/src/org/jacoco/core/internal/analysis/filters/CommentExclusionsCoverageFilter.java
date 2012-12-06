@@ -31,7 +31,7 @@ public class CommentExclusionsCoverageFilter implements ICoverageFilter {
 	private final IDirectivesParser parser;
 
 	private Queue<Directive> directives = new LinkedList<Directive>();
-	private Directive nextDirective;
+
 	private boolean enabled = true;
 	private String packageName = "";
 	private String sourceFilename;
@@ -80,7 +80,6 @@ public class CommentExclusionsCoverageFilter implements ICoverageFilter {
 		public void visitSource(final String source, final String debug) {
 			sourceFilename = source;
 			directives = parser.parseDirectives(packageName, sourceFilename);
-			nextDirective = directives.poll();
 			super.visitSource(source, debug);
 		}
 	}
@@ -92,27 +91,32 @@ public class CommentExclusionsCoverageFilter implements ICoverageFilter {
 
 	public MethodProbesVisitor visitMethod(final String name,
 			final String desc, final MethodProbesVisitor delegate) {
-		if ((directives.size() == 0) && (nextDirective == null)) {
+		if (directives.size() == 0) {
 			return delegate;
 		} else {
-			return new LineNumberMethodVisitor(delegate);
+			return new LineNumberMethodVisitor(delegate, directives);
 		}
 	}
 
 	private class LineNumberMethodVisitor extends MethodProbesVisitor {
 
 		private final MethodProbesVisitor delegate;
+		private final Queue<Directive> directivesCopy;
+		private Directive nextDirective;
 
-		private LineNumberMethodVisitor(final MethodProbesVisitor delegate) {
+		private LineNumberMethodVisitor(final MethodProbesVisitor delegate,
+				final Queue<Directive> directives) {
 			super(delegate);
 			this.delegate = delegate;
+			directivesCopy = new LinkedList<Directive>(directives);
+			nextDirective = directivesCopy.poll();
 		}
 
 		@Override
 		public void visitLineNumber(final int line, final Label start) {
 			while ((nextDirective != null) && (nextDirective.lineNum <= line)) {
 				enabled = nextDirective.coverageOn;
-				nextDirective = directives.poll();
+				nextDirective = directivesCopy.poll();
 			}
 
 			super.visitLineNumber(line, start);

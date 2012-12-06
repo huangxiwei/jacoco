@@ -75,12 +75,15 @@ public class Instruction {
 
 	/**
 	 * Resets the number of branches for this instruction to zero. Also
-	 * recursively updates all previous instructions to have one less branch.
+	 * recursively updates a single previous coverageEnabled instruction to have
+	 * one less branch.
 	 */
 	public void setDisabled() {
 		for (Instruction i = this; i != null; i = i.predecessor) {
-			if (i.branches > 1) {
-				i.branches--;
+			if (i.coverageEnabled) {
+				if (i.branches > 1) {
+					i.branches--;
+				}
 				break;
 			}
 		}
