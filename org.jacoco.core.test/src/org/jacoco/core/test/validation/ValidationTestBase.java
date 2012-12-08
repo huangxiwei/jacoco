@@ -14,11 +14,15 @@ package org.jacoco.core.test.validation;
 import static org.junit.Assert.assertEquals;
 
 import java.util.Collection;
+import java.util.LinkedList;
+import java.util.List;
+import java.util.Queue;
 
 import org.jacoco.core.analysis.Analyzer;
 import org.jacoco.core.analysis.CoverageBuilder;
 import org.jacoco.core.analysis.IClassCoverage;
 import org.jacoco.core.analysis.ICounter;
+import org.jacoco.core.analysis.IDirectivesParser;
 import org.jacoco.core.analysis.ILine;
 import org.jacoco.core.analysis.ISourceFileCoverage;
 import org.jacoco.core.data.ExecutionDataStore;
@@ -62,8 +66,30 @@ public abstract class ValidationTestBase {
 		final ClassReader reader = new ClassReader(
 				TargetLoader.getClassData(target));
 		final ExecutionDataStore store = execute(reader);
-		analyze(reader, store);
 		source = Source.getSourceFor(target);
+		analyze(reader, store);
+	}
+
+	private class SourceDirectivesParser implements IDirectivesParser {
+		private final Queue<Directive> directives = new LinkedList<Directive>();
+
+		private SourceDirectivesParser() {
+			List<String> lines = source.getLines();
+
+			for (int ii = 0; ii < lines.size(); ii++) {
+				String line = lines.get(ii).trim();
+				if ("///COVERAGE:OFF".equalsIgnoreCase(line)) {
+					directives.add(new Directive(ii + 1, false));
+				} else if ("///COVERAGE:ON".equalsIgnoreCase(line)) {
+					directives.add(new Directive(ii + 1, true));
+				}
+			}
+		}
+
+		public Queue<Directive> parseDirectives(String packageName,
+				String sourceFilename) {
+			return new LinkedList<Directive>(directives);
+		}
 	}
 
 	private ExecutionDataStore execute(final ClassReader reader)
@@ -84,7 +110,8 @@ public abstract class ValidationTestBase {
 	private void analyze(final ClassReader reader,
 			final ExecutionDataStore store) {
 		final CoverageBuilder builder = new CoverageBuilder();
-		final Analyzer analyzer = new Analyzer(store, builder);
+		final Analyzer analyzer = new Analyzer(store, builder,
+				new SourceDirectivesParser());
 		analyzer.analyzeClass(reader);
 		final Collection<IClassCoverage> classes = builder.getClasses();
 		assertEquals(1, classes.size(), 0.0);

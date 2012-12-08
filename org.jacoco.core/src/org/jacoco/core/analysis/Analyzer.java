@@ -37,6 +37,7 @@ import org.jacoco.core.internal.data.CRC64;
 import org.jacoco.core.internal.flow.ClassProbesAdapter;
 import org.objectweb.asm.ClassReader;
 import org.objectweb.asm.ClassVisitor;
+import org.objectweb.asm.Opcodes;
 
 /**
  * An {@link Analyzer} instance processes a set of Java class files and
@@ -129,10 +130,13 @@ public class Analyzer {
 	 *            reader with class definitions
 	 */
 	public void analyzeClass(final ClassReader reader) {
-		if (coverageFilter.includeClass(reader.getClassName())) {
-			final ClassVisitor visitor = createAnalyzingVisitor(CRC64
-					.checksum(reader.b));
-			reader.accept(coverageFilter.visitClass(visitor), 0);
+		if ((reader.getAccess() & Opcodes.ACC_SYNTHETIC) == 0) {
+			// Don't analyze synthetic classes
+			if (coverageFilter.includeClass(reader.getClassName())) {
+				final ClassVisitor visitor = createAnalyzingVisitor(CRC64
+						.checksum(reader.b));
+				reader.accept(coverageFilter.visitClass(visitor), 0);
+			}
 		}
 	}
 
