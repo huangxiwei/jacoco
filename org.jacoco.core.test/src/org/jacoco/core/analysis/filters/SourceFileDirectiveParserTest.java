@@ -18,7 +18,7 @@ import static org.junit.Assert.assertTrue;
 import java.io.IOException;
 import java.io.Reader;
 import java.io.StringReader;
-import java.util.Queue;
+import java.util.List;
 
 import org.jacoco.core.analysis.IDirectivesParser;
 import org.jacoco.core.analysis.IDirectivesParser.Directive;
@@ -42,20 +42,20 @@ public class SourceFileDirectiveParserTest {
 		};
 		IDirectivesParser.SourceFileDirectivesParser parser = new IDirectivesParser.SourceFileDirectivesParser(
 				locator, false);
-		Queue<Directive> directives = parser.parseDirectives(null, null);
+		List<Directive> directives = parser.parseDirectives(null, null);
 
 		assertEquals(4, directives.size());
-		assertEquals(2, directives.peek().lineNum);
-		assertFalse(directives.peek().coverageOn);
-		directives.poll();
-		assertEquals(4, directives.peek().lineNum);
-		assertTrue(directives.peek().coverageOn);
-		directives.poll();
-		assertEquals(6, directives.peek().lineNum);
-		assertFalse(directives.peek().coverageOn);
-		directives.poll();
-		assertEquals(8, directives.peek().lineNum);
-		assertTrue(directives.peek().coverageOn);
+		assertEquals(2, directives.get(0).lineNum);
+		assertFalse(directives.get(0).coverageOn);
+
+		assertEquals(4, directives.get(1).lineNum);
+		assertTrue(directives.get(1).coverageOn);
+
+		assertEquals(6, directives.get(2).lineNum);
+		assertFalse(directives.get(2).coverageOn);
+
+		assertEquals(8, directives.get(3).lineNum);
+		assertTrue(directives.get(3).coverageOn);
 	}
 
 	@Test
@@ -75,17 +75,17 @@ public class SourceFileDirectiveParserTest {
 		};
 		IDirectivesParser.SourceFileDirectivesParser parser = new IDirectivesParser.SourceFileDirectivesParser(
 				locator, true);
-		Queue<Directive> directives = parser.parseDirectives(null, null);
+		List<Directive> directives = parser.parseDirectives(null, null);
 
 		assertEquals(3, directives.size());
-		assertEquals(4, directives.peek().lineNum);
-		assertTrue(directives.peek().coverageOn);
-		directives.poll();
-		assertEquals(6, directives.peek().lineNum);
-		assertFalse(directives.peek().coverageOn);
-		directives.poll();
-		assertEquals(8, directives.peek().lineNum);
-		assertTrue(directives.peek().coverageOn);
+		assertEquals(4, directives.get(0).lineNum);
+		assertTrue(directives.get(0).coverageOn);
+
+		assertEquals(6, directives.get(1).lineNum);
+		assertFalse(directives.get(1).coverageOn);
+
+		assertEquals(8, directives.get(2).lineNum);
+		assertTrue(directives.get(2).coverageOn);
 	}
 
 	@Test
@@ -102,7 +102,7 @@ public class SourceFileDirectiveParserTest {
 		};
 		IDirectivesParser.SourceFileDirectivesParser parser = new IDirectivesParser.SourceFileDirectivesParser(
 				locator, false);
-		Queue<Directive> directives = parser.parseDirectives(null, null);
+		List<Directive> directives = parser.parseDirectives(null, null);
 
 		assertEquals(0, directives.size());
 	}

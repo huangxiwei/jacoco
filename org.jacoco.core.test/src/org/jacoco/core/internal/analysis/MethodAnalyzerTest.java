@@ -16,7 +16,7 @@ import static org.junit.Assert.assertEquals;
 
 import java.util.ArrayList;
 import java.util.LinkedList;
-import java.util.Queue;
+import java.util.List;
 
 import org.jacoco.core.analysis.IDirectivesParser;
 import org.jacoco.core.analysis.IDirectivesParser.Directive;
@@ -48,7 +48,7 @@ public class MethodAnalyzerTest implements IProbeIdGenerator {
 
 	private IMethodCoverage result;
 
-	private Queue<Directive> coverageDirectives;
+	private List<Directive> coverageDirectives;
 
 	@Before
 	public void setup() {
@@ -675,7 +675,7 @@ public class MethodAnalyzerTest implements IProbeIdGenerator {
 
 	private void runMethodAnalzerWithCoverageDirectivesFilter() {
 		IDirectivesParser parser = new IDirectivesParser() {
-			public Queue<Directive> parseDirectives(String packageName,
+			public List<Directive> parseDirectives(String packageName,
 					String sourceFilename) {
 				return coverageDirectives;
 			}

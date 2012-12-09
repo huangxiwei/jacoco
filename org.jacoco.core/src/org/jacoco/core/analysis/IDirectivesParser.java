@@ -17,7 +17,7 @@ import java.io.Reader;
 import java.util.Collections;
 import java.util.HashSet;
 import java.util.LinkedList;
-import java.util.Queue;
+import java.util.List;
 import java.util.Set;
 
 import org.jacoco.core.data.ISourceFileLocator;
@@ -90,9 +90,9 @@ public interface IDirectivesParser {
 			this.requireComment = requireComment;
 		}
 
-		public Queue<Directive> parseDirectives(final String packageName,
+		public List<Directive> parseDirectives(final String packageName,
 				final String sourceFilename) {
-			final Queue<Directive> directives = new LinkedList<Directive>();
+			final List<Directive> directives = new LinkedList<Directive>();
 
 			try {
 				final Reader sourceReader = sourceLocator.getSourceFile(
@@ -154,6 +154,6 @@ public interface IDirectivesParser {
 	 * @param sourceFilename
 	 * @return Queue of directives in the order which they apply.
 	 */
-	public Queue<IDirectivesParser.Directive> parseDirectives(
-			String packageName, String sourceFilename);
+	public List<Directive> parseDirectives(String packageName,
+			String sourceFilename);
 }

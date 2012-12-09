@@ -86,7 +86,7 @@ public abstract class ValidationTestBase {
 			}
 		}
 
-		public Queue<Directive> parseDirectives(String packageName,
+		public List<Directive> parseDirectives(String packageName,
 				String sourceFilename) {
 			return new LinkedList<Directive>(directives);
 		}

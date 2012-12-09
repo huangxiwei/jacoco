@@ -12,7 +12,7 @@
 package org.jacoco.core.internal.analysis.filters;
 
 import java.util.LinkedList;
-import java.util.Queue;
+import java.util.List;
 
 import org.jacoco.core.analysis.IDirectivesParser;
 import org.jacoco.core.analysis.IDirectivesParser.Directive;
@@ -30,7 +30,7 @@ public class CommentExclusionsCoverageFilter implements ICoverageFilter {
 
 	private final IDirectivesParser parser;
 
-	private Queue<Directive> directives = new LinkedList<Directive>();
+	private List<Directive> directives = new LinkedList<Directive>();
 
 	private boolean enabled = true;
 	private String packageName = "";
@@ -94,29 +94,41 @@ public class CommentExclusionsCoverageFilter implements ICoverageFilter {
 		if (directives.size() == 0) {
 			return delegate;
 		} else {
-			return new LineNumberMethodVisitor(delegate, directives);
+			return new LineNumberMethodVisitor(delegate);
 		}
 	}
 
 	private class LineNumberMethodVisitor extends MethodProbesVisitor {
 
 		private final MethodProbesVisitor delegate;
-		private final Queue<Directive> directivesCopy;
-		private Directive nextDirective;
 
-		private LineNumberMethodVisitor(final MethodProbesVisitor delegate,
-				final Queue<Directive> directives) {
+		private int directiveIndex = 0;
+
+		private LineNumberMethodVisitor(final MethodProbesVisitor delegate) {
 			super(delegate);
 			this.delegate = delegate;
-			directivesCopy = new LinkedList<Directive>(directives);
-			nextDirective = directivesCopy.poll();
 		}
 
 		@Override
 		public void visitLineNumber(final int line, final Label start) {
-			while ((nextDirective != null) && (nextDirective.lineNum <= line)) {
-				enabled = nextDirective.coverageOn;
-				nextDirective = directivesCopy.poll();
+
+			// Scan backwards through directives
+			while (directiveIndex > 0
+					&& (directives.get(directiveIndex - 1).lineNum > line)) {
+				directiveIndex--;
+			}
+
+			// Check whether we are above the top directive
+			if (line < directives.get(directiveIndex).lineNum) {
+				enabled = true;
+			} else {
+				// Scan forward through directives
+				while (directiveIndex < (directives.size() - 1)
+						&& (directives.get(directiveIndex + 1).lineNum <= line)) {
+					directiveIndex++;
+				}
+
+				enabled = directives.get(directiveIndex).coverageOn;
 			}
 
 			super.visitLineNumber(line, start);
