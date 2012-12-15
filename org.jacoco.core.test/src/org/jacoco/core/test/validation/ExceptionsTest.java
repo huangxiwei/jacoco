@@ -70,28 +70,32 @@ public class ExceptionsTest extends ValidationTestBase {
 				ICounter.FULLY_COVERED);
 
 		// 6. Finally Block Without Exception Thrown
-		// Finally block is yellow as the exception path is missing.
+		// Finally block is green as the exception path is ignored.
 		assertLine("noExceptionFinally.beforeBlock", ICounter.FULLY_COVERED);
 		assertLine("noExceptionFinally.tryBlock", ICounter.FULLY_COVERED);
-		assertLine("noExceptionFinally.finallyBlock", ICounter.PARTLY_COVERED);
+		assertLine("noExceptionFinally.finallyBlock", ICounter.FULLY_COVERED);
 
 		// 7. Finally Block With Implicit Exception
-		// Finally block is yellow as the non-exception path is missing.
+		// Finally block is red as the non-exception path is missing and
+		// the exception path is ignored.
 		assertLine("implicitExceptionFinally.beforeBlock",
 				ICounter.FULLY_COVERED);
 		assertLine("implicitExceptionFinally.before", ICounter.NOT_COVERED);
 		assertLine("implicitExceptionFinally.exception", ICounter.NOT_COVERED);
 		assertLine("implicitExceptionFinally.after", ICounter.NOT_COVERED);
 		assertLine("implicitExceptionFinally.finallyBlock",
-				ICounter.PARTLY_COVERED);
+				ICounter.NOT_COVERED);
 
 		// 8. Finally Block With Exception Thrown Explicitly
+		// Compiler doesn't emit finally code for the non-exception
+		// path when there is an explicit exception. The exception
+		// path is ignored so the finally block appears to contain
+		// no code.
 		assertLine("explicitExceptionFinally.beforeBlock",
 				ICounter.FULLY_COVERED);
 		assertLine("explicitExceptionFinally.before", ICounter.FULLY_COVERED);
 		assertLine("explicitExceptionFinally.throw", ICounter.FULLY_COVERED);
-		assertLine("explicitExceptionFinally.finallyBlock",
-				ICounter.FULLY_COVERED);
+		assertLine("explicitExceptionFinally.finallyBlock", ICounter.EMPTY);
 
 	}
 
