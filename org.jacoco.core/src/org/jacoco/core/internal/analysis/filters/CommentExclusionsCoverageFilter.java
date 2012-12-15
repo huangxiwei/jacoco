@@ -114,7 +114,7 @@ public class CommentExclusionsCoverageFilter implements ICoverageFilter {
 
 			// Scan backwards through directives
 			while (directiveIndex > 0
-					&& (directives.get(directiveIndex - 1).lineNum > line)) {
+					&& (directives.get(directiveIndex).lineNum > line)) {
 				directiveIndex--;
 			}
 
