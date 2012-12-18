@@ -32,7 +32,7 @@ import org.jacoco.core.internal.analysis.filters.CompositeCoverageFilter;
 import org.jacoco.core.internal.analysis.filters.EmptyConstructorCoverageFilter;
 import org.jacoco.core.internal.analysis.filters.ICoverageFilterStatus.ICoverageFilter;
 import org.jacoco.core.internal.analysis.filters.ImplicitEnumMethodsCoverageFilter;
-import org.jacoco.core.internal.analysis.filters.FinallyCoverageFilter;
+import org.jacoco.core.internal.analysis.filters.SynchronizedExitCoverageFilter;
 import org.jacoco.core.internal.data.CRC64;
 import org.jacoco.core.internal.flow.ClassProbesAdapter;
 import org.objectweb.asm.ClassReader;
@@ -94,7 +94,7 @@ public class Analyzer {
 		final List<ICoverageFilter> filters = new ArrayList<ICoverageFilter>();
 		filters.add(new ImplicitEnumMethodsCoverageFilter());
 		filters.add(new EmptyConstructorCoverageFilter());
-		filters.add(new FinallyCoverageFilter());
+		filters.add(new SynchronizedExitCoverageFilter());
 		if (directivesParser != null) {
 			filters.add(new CommentExclusionsCoverageFilter(directivesParser));
 		}

@@ -15,6 +15,7 @@ import static org.junit.Assert.assertEquals;
 
 import org.junit.Before;
 import org.junit.Test;
+import org.objectweb.asm.Opcodes;
 
 /**
  * Unit tests for {@link Instruction}.
@@ -25,7 +26,7 @@ public class InstructionTest {
 
 	@Before
 	public void setup() {
-		instruction = new Instruction(123, true);
+		instruction = new Instruction(Opcodes.AALOAD, 123, true);
 	}
 
 	@Test
@@ -48,14 +49,16 @@ public class InstructionTest {
 
 	@Test
 	public void testSetPredecessor() {
-		final Instruction predecessor = new Instruction(122, true);
+		final Instruction predecessor = new Instruction(Opcodes.AALOAD, 122,
+				true);
 		instruction.setPredecessor(predecessor);
 		assertEquals(1, predecessor.getBranches());
 	}
 
 	@Test
 	public void testSetCovered() {
-		final Instruction predecessor = new Instruction(122, true);
+		final Instruction predecessor = new Instruction(Opcodes.AALOAD, 122,
+				true);
 		instruction.setPredecessor(predecessor);
 		instruction.setCovered();
 		assertEquals(1, instruction.getCoveredBranches());
@@ -68,10 +71,10 @@ public class InstructionTest {
 
 	@Test
 	public void testSetCoveredOnLongSequence() {
-		final Instruction first = new Instruction(0, true);
+		final Instruction first = new Instruction(Opcodes.AALOAD, 0, true);
 		Instruction next = first;
 		for (int i = 0; i < 0x10000; i++) {
-			final Instruction insn = new Instruction(i, true);
+			final Instruction insn = new Instruction(Opcodes.AALOAD, i, true);
 			insn.setPredecessor(next);
 			next = insn;
 		}

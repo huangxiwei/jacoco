@@ -13,7 +13,10 @@
 package org.jacoco.core.internal.analysis;
 
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
+import java.util.Map.Entry;
 
 import org.jacoco.core.analysis.ICounter;
 import org.jacoco.core.analysis.IMethodCoverage;
@@ -24,6 +27,7 @@ import org.jacoco.core.internal.flow.LabelInfo;
 import org.jacoco.core.internal.flow.MethodProbesVisitor;
 import org.objectweb.asm.Handle;
 import org.objectweb.asm.Label;
+import org.objectweb.asm.Opcodes;
 
 /**
  * A {@link MethodProbesVisitor} that analyzes which statements and branches of
@@ -60,6 +64,12 @@ public class MethodAnalyzer extends MethodProbesVisitor {
 
 	/** Last instruction in byte code sequence */
 	private Instruction lastInsn;
+
+	/** Map: LineNo: List of line duplicates: List of instructions */
+	private final Map<Integer, List<List<Instruction>>> lineInsDups = new HashMap<Integer, List<List<Instruction>>>();
+
+	/** Instructions on the current line */
+	private List<Instruction> currentLineIns = null;
 
 	/**
 	 * New Method analyzer for the given probe data.
@@ -107,6 +117,16 @@ public class MethodAnalyzer extends MethodProbesVisitor {
 	@Override
 	public void visitLineNumber(final int line, final Label start) {
 		currentLine = line;
+
+		List<List<Instruction>> lineInsDup = lineInsDups.get(Integer
+				.valueOf(currentLine));
+		if (lineInsDup == null) {
+			lineInsDup = new ArrayList<List<Instruction>>();
+			lineInsDups.put(Integer.valueOf(currentLine), lineInsDup);
+		}
+
+		currentLineIns = new ArrayList<Instruction>();
+
 		if (firstLine > line || lastLine == ISourceNode.UNKNOWN_LINE) {
 			firstLine = line;
 		}
@@ -115,13 +135,25 @@ public class MethodAnalyzer extends MethodProbesVisitor {
 		}
 	}
 
-	private void visitInsn() {
-		final Instruction insn = new Instruction(currentLine,
+	@Override
+	public void visitInsn(final int opcode) {
+		final Instruction insn = new Instruction(opcode, currentLine,
 				coverageFilterStatus.enabled());
 		instructions.add(insn);
 		if (lastInsn != null) {
 			insn.setPredecessor(lastInsn);
 		}
+
+		if ((currentLineIns != null)
+				&& ((currentLineIns.size() != 0) || (opcode != Opcodes.ASTORE))) {
+			// HACK: Ignore ASTORE instructions at the start of a line
+			currentLineIns.add(insn);
+			if (currentLineIns.size() == 1) {
+				lineInsDups.get(Integer.valueOf(currentLine)).add(
+						currentLineIns);
+			}
+		}
+
 		final int labelCount = currentLabel.size();
 		if (labelCount > 0) {
 			for (int i = labelCount; --i >= 0;) {
@@ -133,73 +165,69 @@ public class MethodAnalyzer extends MethodProbesVisitor {
 	}
 
 	@Override
-	public void visitInsn(final int opcode) {
-		visitInsn();
-	}
-
-	@Override
 	public void visitIntInsn(final int opcode, final int operand) {
-		visitInsn();
+		visitInsn(opcode);
 	}
 
 	@Override
 	public void visitVarInsn(final int opcode, final int var) {
-		visitInsn();
+		visitInsn(opcode);
 	}
 
 	@Override
 	public void visitTypeInsn(final int opcode, final String type) {
-		visitInsn();
+		visitInsn(opcode);
 	}
 
 	@Override
 	public void visitFieldInsn(final int opcode, final String owner,
 			final String name, final String desc) {
-		visitInsn();
+		visitInsn(opcode);
 	}
 
 	@Override
 	public void visitMethodInsn(final int opcode, final String owner,
 			final String name, final String desc) {
-		visitInsn();
+		visitInsn(opcode);
 	}
 
 	@Override
 	public void visitInvokeDynamicInsn(final String name, final String desc,
 			final Handle bsm, final Object... bsmArgs) {
-		visitInsn();
+		visitInsn(Opcodes.INVOKEDYNAMIC);
 	}
 
 	@Override
 	public void visitJumpInsn(final int opcode, final Label label) {
-		visitInsn();
+		visitInsn(opcode);
 		jumps.add(new Jump(lastInsn, label));
 	}
 
 	@Override
 	public void visitLdcInsn(final Object cst) {
-		visitInsn();
+		visitInsn(Opcodes.LDC);
 	}
 
 	@Override
 	public void visitIincInsn(final int var, final int increment) {
-		visitInsn();
+		visitInsn(Opcodes.IINC);
 	}
 
 	@Override
 	public void visitTableSwitchInsn(final int min, final int max,
 			final Label dflt, final Label... labels) {
-		visitSwitchInsn(dflt, labels);
+		visitSwitchInsn(Opcodes.TABLESWITCH, dflt, labels);
 	}
 
 	@Override
 	public void visitLookupSwitchInsn(final Label dflt, final int[] keys,
 			final Label[] labels) {
-		visitSwitchInsn(dflt, labels);
+		visitSwitchInsn(Opcodes.LOOKUPSWITCH, dflt, labels);
 	}
 
-	private void visitSwitchInsn(final Label dflt, final Label[] labels) {
-		visitInsn();
+	private void visitSwitchInsn(final int opcode, final Label dflt,
+			final Label[] labels) {
+		visitInsn(opcode);
 		LabelInfo.resetDone(labels);
 		jumps.add(new Jump(lastInsn, dflt));
 		LabelInfo.setDone(dflt);
@@ -213,7 +241,7 @@ public class MethodAnalyzer extends MethodProbesVisitor {
 
 	@Override
 	public void visitMultiANewArrayInsn(final String desc, final int dims) {
-		visitInsn();
+		visitInsn(Opcodes.MULTIANEWARRAY);
 	}
 
 	@Override
@@ -225,31 +253,31 @@ public class MethodAnalyzer extends MethodProbesVisitor {
 	@Override
 	public void visitJumpInsnWithProbe(final int opcode, final Label label,
 			final int probeId) {
-		visitInsn();
+		visitInsn(opcode);
 		addProbe(probeId);
 	}
 
 	@Override
 	public void visitInsnWithProbe(final int opcode, final int probeId) {
-		visitInsn();
+		visitInsn(opcode);
 		addProbe(probeId);
 	}
 
 	@Override
 	public void visitTableSwitchInsnWithProbes(final int min, final int max,
 			final Label dflt, final Label[] labels) {
-		visitSwitchInsnWithProbes(dflt, labels);
+		visitSwitchInsnWithProbes(Opcodes.TABLESWITCH, dflt, labels);
 	}
 
 	@Override
 	public void visitLookupSwitchInsnWithProbes(final Label dflt,
 			final int[] keys, final Label[] labels) {
-		visitSwitchInsnWithProbes(dflt, labels);
+		visitSwitchInsnWithProbes(Opcodes.LOOKUPSWITCH, dflt, labels);
 	}
 
-	private void visitSwitchInsnWithProbes(final Label dflt,
+	private void visitSwitchInsnWithProbes(final int opcode, final Label dflt,
 			final Label[] labels) {
-		visitInsn();
+		visitInsn(opcode);
 		LabelInfo.resetDone(dflt);
 		LabelInfo.resetDone(labels);
 		visitSwitchTarget(dflt);
@@ -272,6 +300,60 @@ public class MethodAnalyzer extends MethodProbesVisitor {
 
 	@Override
 	public void visitEnd() {
+		// Cluster line duplicates
+		/**
+		 * List of line clusters, Each line cluster is a list of line
+		 * duplicates, Each line duplicate is a list of instructions
+		 */
+		final Map<Integer, List<List<List<Instruction>>>> lineInsDupClustersMap = new HashMap<Integer, List<List<List<Instruction>>>>();
+		for (final Entry<Integer, List<List<Instruction>>> lineInsDupEntry : lineInsDups
+				.entrySet()) {
+			if (lineInsDupEntry.getValue().size() > 1) {
+				final List<List<Instruction>> lineInsDup = lineInsDupEntry
+						.getValue();
+				final List<List<List<Instruction>>> allclusters = new ArrayList<List<List<Instruction>>>();
+				for (final List<Instruction> lineIns : lineInsDup) {
+					addToCluster(allclusters, lineIns);
+				}
+
+				final List<List<List<Instruction>>> clusters = new ArrayList<List<List<Instruction>>>();
+				for (final List<List<Instruction>> cluster : allclusters) {
+					if (cluster.size() > 1) {
+						clusters.add(cluster);
+					}
+				}
+
+				if (clusters.size() > 0) {
+					lineInsDupClustersMap.put(lineInsDupEntry.getKey(),
+							clusters);
+				}
+			}
+		}
+		// Propagate coverage of line duplicates
+		final List<Instruction> coveredProbesCopy = new ArrayList<Instruction>(
+				coveredProbes);
+		for (final Instruction p : coveredProbesCopy) {
+			final Integer lineNumObj = Integer.valueOf(p.getLine());
+			final List<List<List<Instruction>>> clusters = lineInsDupClustersMap
+					.get(lineNumObj);
+			if (clusters != null) {
+				final List<List<Instruction>> cluster = findCluster(clusters, p);
+				if (cluster != null) {
+					final int coveredIndex = findIndex(cluster, p);
+					if (coveredIndex > -1) {
+						for (final List<Instruction> lineIns : cluster) {
+							if (coveredIndex < lineIns.size()) {
+								final Instruction coveredProbe = lineIns
+										.get(coveredIndex);
+								if (!coveredProbes.contains(coveredProbe)) {
+									coveredProbes.add(coveredProbe);
+								}
+							}
+						}
+					}
+				}
+			}
+		}
 		// Wire jumps:
 		for (final Jump j : jumps) {
 			LabelInfo.getInstruction(j.target).setPredecessor(j.source);
@@ -282,6 +364,34 @@ public class MethodAnalyzer extends MethodProbesVisitor {
 		}
 		for (final Instruction p : disabledProbes) {
 			p.setDisabled();
+		}
+		// Propagate coverage into line duplicates:
+		for (final List<List<List<Instruction>>> clusters : lineInsDupClustersMap
+				.values()) {
+			for (final List<List<Instruction>> cluster : clusters) {
+				boolean seenCovered = false;
+				for (final List<Instruction> lineIns : cluster) {
+					if (lineIns.get(lineIns.size() - 1).getCoveredBranches() > 0) {
+						seenCovered = true;
+					}
+				}
+				if (seenCovered) {
+					final List<Instruction> lineIns = cluster.get(0);
+					final Instruction lastLineIns = lineIns
+							.get(lineIns.size() - 1);
+					if (lastLineIns.getCoveredBranches() == 0) {
+						lastLineIns.setLineCovered();
+					}
+				}
+				// Disable all but the first duplicate
+				for (int index = 1; index < cluster.size(); index++) {
+					for (final Instruction instruction : cluster.get(index)) {
+						if (instruction.isCoverageEnabled()) {
+							instruction.disable();
+						}
+					}
+				}
+			}
 		}
 		// Report result:
 		coverage.ensureCapacity(firstLine, lastLine);
@@ -307,6 +417,44 @@ public class MethodAnalyzer extends MethodProbesVisitor {
 			coverage.increment(instrCounter, branchCounter, i.getLine());
 		}
 		coverage.incrementMethodCounter();
+	}
+
+	private int findIndex(final List<List<Instruction>> cluster,
+			final Instruction p) {
+		for (final List<Instruction> lineIns : cluster) {
+			final int index = lineIns.indexOf(p);
+			if (index > -1) {
+				return index;
+			}
+		}
+		return -1;
+	}
+
+	private List<List<Instruction>> findCluster(
+			final List<List<List<Instruction>>> clusters, final Instruction p) {
+		for (final List<List<Instruction>> cluster : clusters) {
+			for (final List<Instruction> lineIns : cluster) {
+				if (lineIns.contains(p)) {
+					return cluster;
+				}
+			}
+		}
+		return null;
+	}
+
+	private void addToCluster(final List<List<List<Instruction>>> clusters,
+			final List<Instruction> lineIns) {
+		for (final List<List<Instruction>> cluster : clusters) {
+			final List<Instruction> example = cluster.get(0);
+			if (example.get(0).getOpcode() == lineIns.get(0).getOpcode()) {
+				cluster.add(lineIns);
+				return;
+			}
+		}
+
+		final List<List<Instruction>> cluster = new ArrayList<List<Instruction>>();
+		cluster.add(lineIns);
+		clusters.add(cluster);
 	}
 
 	private void addProbe(final int probeId) {

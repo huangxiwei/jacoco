@@ -104,4 +104,14 @@ public class Stubs {
 		throw new StubException();
 	}
 
+	/**
+	 * Always throws an {@link IllegalArgumentException}.
+	 * 
+	 * @throws IllegalArgumentException
+	 *             always thrown
+	 */
+	public static void checkedex() throws IllegalArgumentException {
+		throw new IllegalArgumentException();
+	}
+
 }

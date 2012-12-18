@@ -17,9 +17,11 @@ package org.jacoco.core.internal.flow;
  */
 public class Instruction {
 
+	private final int opcode;
+
 	private final int line;
 
-	private final boolean coverageEnabled;
+	private boolean coverageEnabled;
 
 	private int branches;
 
@@ -30,12 +32,16 @@ public class Instruction {
 	/**
 	 * New instruction at the given line.
 	 * 
+	 * @param opcode
+	 *            opcode of this instruction. no args are included.
 	 * @param line
 	 *            source line this instruction belongs to
 	 * @param coverageEnabled
 	 *            whether coverage is enabled for this instruction
 	 */
-	public Instruction(final int line, final boolean coverageEnabled) {
+	public Instruction(final int opcode, final int line,
+			final boolean coverageEnabled) {
+		this.opcode = opcode;
 		this.line = line;
 		this.coverageEnabled = coverageEnabled;
 		this.branches = 0;
@@ -90,6 +96,28 @@ public class Instruction {
 	}
 
 	/**
+	 * Marks one branch of this instruction as covered. Also recursively marks
+	 * all predecessor instructions as covered if this is the first covered
+	 * branch up to the first instruction which is on a line earlier than the
+	 * current line.
+	 */
+	public void setLineCovered() {
+		for (Instruction i = this; i != null && i.coveredBranches++ == 0;) {
+			i = i.predecessor;
+			if ((i != null) && (i.line != this.line)) {
+				break;
+			}
+		}
+	}
+
+	/**
+	 * @return The opcode of this instruction
+	 */
+	public int getOpcode() {
+		return opcode;
+	}
+
+	/**
 	 * Returns the source line this instruction belongs to.
 	 * 
 	 * @return corresponding source line
@@ -121,5 +149,12 @@ public class Instruction {
 	 */
 	public boolean isCoverageEnabled() {
 		return coverageEnabled;
+	}
+
+	/**
+	 * Mark this instruction is disabled
+	 */
+	public void disable() {
+		coverageEnabled = false;
 	}
 }

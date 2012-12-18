@@ -11,6 +11,7 @@
  *******************************************************************************/
 package org.jacoco.core.test.validation.targets;
 
+import static org.jacoco.core.test.validation.targets.Stubs.checkedex;
 import static org.jacoco.core.test.validation.targets.Stubs.ex;
 import static org.jacoco.core.test.validation.targets.Stubs.nop;
 
@@ -40,6 +41,12 @@ public class Target03 implements Runnable {
 		}
 		try {
 			implicitExceptionFinally();
+		} catch (StubException e) {
+		}
+		finallyBranchCoverage(false, false);
+		finallyBranchCoverage(false, true);
+		try {
+			finallyBranchCoverage(true, false);
 		} catch (StubException e) {
 		}
 	}
@@ -112,6 +119,26 @@ public class Target03 implements Runnable {
 			throw new StubException(); // $line-explicitExceptionFinally.throw$
 		} finally { // $line-explicitExceptionFinally.finally$
 			nop(); // $line-explicitExceptionFinally.finallyBlock$
+		}
+	}
+
+	private void finallyBranchCoverage(boolean unchecked, boolean checked) {
+		nop();
+		try {
+			nop();
+			if (unchecked) {
+				ex();
+			} else if (checked) {
+				checkedex();
+			}
+		} catch (IllegalArgumentException ex) {
+			nop();
+		} finally { // $line-finallyBranchCoverage.finally$
+			if (unchecked) { // $line-finallyBranchCoverage.cond1$
+				nop(); // $line-finallyBranchCoverage.contents1$
+			} else if (checked) { // $line-finallyBranchCoverage.cond2$
+				nop(); // $line-finallyBranchCoverage.contents2$
+			}
 		}
 	}
 

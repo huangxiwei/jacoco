@@ -20,6 +20,7 @@ import static org.junit.Assert.assertTrue;
 import org.junit.Before;
 import org.junit.Test;
 import org.objectweb.asm.Label;
+import org.objectweb.asm.Opcodes;
 
 /**
  * Unit tests for {@link LabelInfoTest}.
@@ -122,7 +123,8 @@ public class LabelInfoTest {
 
 	@Test
 	public void testSetInstruction() {
-		final Instruction instruction = new Instruction(123, true);
+		final Instruction instruction = new Instruction(Opcodes.AALOAD, 123,
+				true);
 		LabelInfo.setInstruction(label, instruction);
 		assertSame(instruction, LabelInfo.getInstruction(label));
 	}

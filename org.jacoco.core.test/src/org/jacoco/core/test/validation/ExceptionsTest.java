@@ -70,33 +70,37 @@ public class ExceptionsTest extends ValidationTestBase {
 				ICounter.FULLY_COVERED);
 
 		// 6. Finally Block Without Exception Thrown
-		// Finally block is green as the exception path is ignored.
+		// Finally block is green
 		assertLine("noExceptionFinally.beforeBlock", ICounter.FULLY_COVERED);
 		assertLine("noExceptionFinally.tryBlock", ICounter.FULLY_COVERED);
 		assertLine("noExceptionFinally.finallyBlock", ICounter.FULLY_COVERED);
 
 		// 7. Finally Block With Implicit Exception
-		// Finally block is red as the non-exception path is missing and
-		// the exception path is ignored.
+		// Finally block is green.
 		assertLine("implicitExceptionFinally.beforeBlock",
 				ICounter.FULLY_COVERED);
 		assertLine("implicitExceptionFinally.before", ICounter.NOT_COVERED);
 		assertLine("implicitExceptionFinally.exception", ICounter.NOT_COVERED);
 		assertLine("implicitExceptionFinally.after", ICounter.NOT_COVERED);
 		assertLine("implicitExceptionFinally.finallyBlock",
-				ICounter.NOT_COVERED);
+				ICounter.FULLY_COVERED);
 
 		// 8. Finally Block With Exception Thrown Explicitly
-		// Compiler doesn't emit finally code for the non-exception
-		// path when there is an explicit exception. The exception
-		// path is ignored so the finally block appears to contain
-		// no code.
+		// Finally block is green.
 		assertLine("explicitExceptionFinally.beforeBlock",
 				ICounter.FULLY_COVERED);
 		assertLine("explicitExceptionFinally.before", ICounter.FULLY_COVERED);
 		assertLine("explicitExceptionFinally.throw", ICounter.FULLY_COVERED);
-		assertLine("explicitExceptionFinally.finallyBlock", ICounter.EMPTY);
+		assertLine("explicitExceptionFinally.finallyBlock",
+				ICounter.FULLY_COVERED);
 
+		// 9. Finally block conditional coverage
+		// Fully covered
+		assertLine("finallyBranchCoverage.finally", ICounter.FULLY_COVERED);
+		assertLine("finallyBranchCoverage.cond1", ICounter.FULLY_COVERED, 0, 2);
+		assertLine("finallyBranchCoverage.contents1", ICounter.FULLY_COVERED);
+		assertLine("finallyBranchCoverage.cond2", ICounter.FULLY_COVERED, 0, 2);
+		assertLine("finallyBranchCoverage.contents2", ICounter.FULLY_COVERED);
 	}
 
 }

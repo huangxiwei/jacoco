@@ -66,8 +66,9 @@ public class Target01 implements Runnable {
 		} while (f());
 
 		// 8. Missed for block
-		for (nop(); f(); nop()) { // $line-missedforincrementer$
-			nop(); // $line-missedfor$
+		boolean nopVal = false;
+		for (nop(); f(); nopVal = true) { // $line-missedforincrementer$
+			nop(nopVal); // $line-missedfor$
 		}
 
 		// 9. Executed for block
