@@ -79,7 +79,12 @@ public class PercentageColumn implements IColumnRenderer {
 		if (total == 0) {
 			td.text("n/a");
 		} else {
-			td.text(percentageFormat.format(counter.getCoveredRatio()));
+			double ratio = counter.getCoveredRatio();
+			if ((0.99 < ratio) && (ratio < 1.0)) {
+				// Ensure we don't round the ratio up to 100%
+				ratio = 0.99;
+			}
+			td.text(percentageFormat.format(ratio));
 		}
 	}
 
