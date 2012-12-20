@@ -460,11 +460,11 @@ public class MethodAnalyzer extends MethodProbesVisitor {
 	private void addProbe(final int probeId) {
 		if (lastInsn != null) {
 			lastInsn.addBranch();
-			if (lastInsn.isCoverageEnabled()) {
-				if (executionData != null && executionData[probeId]) {
-					coveredProbes.add(lastInsn);
-				}
-			} else {
+			if (executionData != null && executionData[probeId]) {
+				coveredProbes.add(lastInsn);
+			}
+
+			if (!lastInsn.isCoverageEnabled()) {
 				disabledProbes.add(lastInsn);
 			}
 		}
