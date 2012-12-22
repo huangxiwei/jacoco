@@ -144,9 +144,7 @@ public class MethodAnalyzer extends MethodProbesVisitor {
 			insn.setPredecessor(lastInsn);
 		}
 
-		if ((currentLineIns != null)
-				&& ((currentLineIns.size() != 0) || (opcode != Opcodes.ASTORE))) {
-			// HACK: Ignore ASTORE instructions at the start of a line
+		if (currentLineIns != null) {
 			currentLineIns.add(insn);
 			if (currentLineIns.size() == 1) {
 				lineInsDups.get(Integer.valueOf(currentLine)).add(
@@ -446,7 +444,20 @@ public class MethodAnalyzer extends MethodProbesVisitor {
 			final List<Instruction> lineIns) {
 		for (final List<List<Instruction>> cluster : clusters) {
 			final List<Instruction> example = cluster.get(0);
-			if (example.get(0).getOpcode() == lineIns.get(0).getOpcode()) {
+
+			// HACK: Ignore ASTORE instructions at the start of a line
+			int exampleOpCode = example.get(0).getOpcode();
+			if ((exampleOpCode == Opcodes.ASTORE) && (example.size() > 1)) {
+				exampleOpCode = example.get(1).getOpcode();
+			}
+
+			// HACK: Ignore ASTORE instructions at the start of a line
+			int lineInsOpCode = lineIns.get(0).getOpcode();
+			if ((lineInsOpCode == Opcodes.ASTORE) && (lineIns.size() > 1)) {
+				lineInsOpCode = lineIns.get(1).getOpcode();
+			}
+
+			if (exampleOpCode == lineInsOpCode) {
 				cluster.add(lineIns);
 				return;
 			}
