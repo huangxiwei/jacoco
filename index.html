@@ -12,7 +12,7 @@ title: Home
 <h2>Download</h2>
 
 <ul>
-<li><a href="http://mchr3k-eclipse.appspot.com/files/jacoco-0.6.1.201212161321.zip">jacoco-0.6.1.201212161321.zip</a> (16/12/2012)
+<li><a href="http://mchr3k-eclipse.appspot.com/files/jacoco-0.6.1.201301062310.zip">jacoco-0.6.1.201301062310.zip</a> (06/01/2013)
 </ul>
 
 <h2>User Guide</h2>
@@ -66,28 +66,6 @@ title: Home
   &lt;/options&gt;
 </pre>
 
-<h3>Offline Instrumentation</h3>
-
-<p>If you use a mocking framework such as Powermock which modified classes at runtime you need to instrument the
-classes offline to be able to gather coverage data. This is supported by a new ant task.
-
-<p>The instrument task loads classes and outputs modified classes that will gather coverage data. The coverage
-task is called with offlineclasses="true" to signal that the classes have already been modified.
-
-<pre class="prettyprint lang-xml">
-  &lt;instrument todir="./build/classes_instr"&gt;
-    &lt;classfiles&gt;
-      &lt;fileset dir="./build/classes"/&gt;
-    &lt;/classfiles&gt;
-  &lt;/instrument&gt;
-  
-  &lt;coverage destfile="./reports/coverage/jacoco.exec" offlineclasses="true"&gt;
-    &lt;junit printsummary="yes" failureproperty="junit.test.failed" haltonfailure="no" fork="true" dir="${basedir}"&gt;
-      ...
-    &lt;/junit&gt;
-  &lt;/coverage&gt;
-</pre>
-
 <h2>Features</h2>
 
 <p>This fork adds the following:
@@ -103,14 +81,19 @@ task is called with offlineclasses="true" to signal that the classes have alread
   <ul>
   <li>Access to this feature can currently only be enabled from ant.
   </ul>
-<li>Offline class instrumentation.
 </ul>
 
 <h2>Progress</h2>
 
 <h3>Upcoming</h3>
-<p>Fix <a href="https://github.com/jacoco/jacoco/issues/55">finally block coverage</a>. 
-Complete <a href="https://github.com/mchr3k/jacoco/issues/2">offline instrumentation</a>.
+<p>Merge latest JaCoCo changes, remove local offline instrumentation implementation.
+
+<h3>06/01/2013</h3>
+<ul>
+<li>Fix finally block coverage.
+<li>Complete offline instrumentation.
+<li>Add tests for finally block coverage, improve comments on other tests.
+</ul>
 
 <h3>16/12/2012</h3>
 <ul>
