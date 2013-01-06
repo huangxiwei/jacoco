@@ -12,7 +12,8 @@
 package org.jacoco.core.test.validation.targets;
 
 /**
- * This test target is an enum class
+ * This test target is an enum class which therefore includes implicit methods
+ * <code>values()</code> and <code>valueOf()</code>.
  */
 public enum Target11 { // $line-classdef$
 	A, B;

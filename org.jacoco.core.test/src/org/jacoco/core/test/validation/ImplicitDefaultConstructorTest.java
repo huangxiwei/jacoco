@@ -33,6 +33,8 @@ public class ImplicitDefaultConstructorTest extends ValidationTestBase {
 	@Test
 	public void testCoverageResult() {
 
+		// Implicit empty no-args constructor is filtered out so there
+		// are no classdef lines to be covered.
 		assertLine("classdef", ICounter.EMPTY);
 
 	}

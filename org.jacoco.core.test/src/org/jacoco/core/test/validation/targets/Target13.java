@@ -11,6 +11,10 @@
  *******************************************************************************/
 package org.jacoco.core.test.validation.targets;
 
+/**
+ * Switch block with a disabled case. Used to test that the number of branches on the switch
+ * line correctly reflects that one of the branches is entirely disabled.
+ */
 public class Target13 {
 	public static void main(String[] xiArgs) {
 		switch (xiArgs.length) { // $line-switch$
@@ -19,7 +23,11 @@ public class Target13 {
 			break;
 		}
 		case 1: {
-			System.out.println("one");
+			System.out.println("one-1");
+			///COVERAGE:OFF
+			System.out.println("one-2");
+			///COVERAGE:ON
+			System.out.println("one-3");
 			break;
 		}
 		///COVERAGE:OFF
