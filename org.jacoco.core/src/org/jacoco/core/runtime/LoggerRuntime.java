@@ -51,22 +51,6 @@ public class LoggerRuntime extends AbstractRuntime {
 		this.handler = new RuntimeHandler();
 	}
 
-	/**
-	 * Creates a new runtime for use with offline instrumentation.
-	 */
-	public LoggerRuntime(final boolean offline) {
-		super();
-
-		if (!offline) {
-			throw new RuntimeException(
-					"Wrong constructor for online instrumentation");
-		}
-
-		this.key = Integer.toHexString("offline".hashCode());
-		this.logger = configureLogger();
-		this.handler = new RuntimeHandler();
-	}
-
 	private Logger configureLogger() {
 		final Logger l = Logger.getLogger(CHANNEL);
 		l.setUseParentHandlers(false);

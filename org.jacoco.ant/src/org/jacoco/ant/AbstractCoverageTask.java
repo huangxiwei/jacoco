@@ -183,16 +183,6 @@ public class AbstractCoverageTask extends Task {
 	}
 
 	/**
-	 * Sets whether offline classes are supported.
-	 * 
-	 * @param offlineClasses
-	 *            whether offline classes are supported.
-	 */
-	public void setOfflineclasses(final boolean offlineClasses) {
-		agentOptions.setOfflineClasses(offlineClasses);
-	}
-
-	/**
 	 * Creates JVM argument to launch with the specified JaCoCo agent jar and
 	 * the current options
 	 * 

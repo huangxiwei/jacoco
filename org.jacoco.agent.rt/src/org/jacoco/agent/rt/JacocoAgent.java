@@ -24,7 +24,6 @@ import org.jacoco.core.runtime.AbstractRuntime;
 import org.jacoco.core.runtime.AgentOptions;
 import org.jacoco.core.runtime.AgentOptions.OutputMode;
 import org.jacoco.core.runtime.IRuntime;
-import org.jacoco.core.runtime.LoggerRuntime;
 import org.jacoco.core.runtime.ModifiedSystemClassRuntime;
 
 /**
@@ -72,22 +71,14 @@ public class JacocoAgent {
 	 *             internal startup problem
 	 */
 	public void init(final Instrumentation inst) throws Exception {
-		final IRuntime runtime;
-		if (options.getOfflineClasses()) {
-			runtime = new LoggerRuntime(true);
-			runtime.startup();
-		} else {
-			runtime = createRuntime(inst);
-			String sessionId = options.getSessionId();
-			if (sessionId == null) {
-				sessionId = createSessionId();
-			}
-			runtime.setSessionId(sessionId);
-			runtime.startup();
-			inst.addTransformer(new CoverageTransformer(runtime, options,
-					logger));
+		final IRuntime runtime = createRuntime(inst);
+		String sessionId = options.getSessionId();
+		if (sessionId == null) {
+			sessionId = createSessionId();
 		}
-
+		runtime.setSessionId(sessionId);
+		runtime.startup();
+		inst.addTransformer(new CoverageTransformer(runtime, options, logger));
 		controller = createAgentController();
 		controller.startup(options, runtime);
 	}

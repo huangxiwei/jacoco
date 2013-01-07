@@ -155,15 +155,9 @@ public final class AgentOptions {
 	 */
 	public static final String CLASSDUMPDIR = "classdumpdir";
 
-	/**
-	 * Specifies whether the agent will initialise the runtime used by offline
-	 * instrumented classes.
-	 */
-	public static final String OFFLINECLASSES = "offlineclasses";
-
 	private static final Collection<String> VALID_OPTIONS = Arrays.asList(
 			DESTFILE, APPEND, INCLUDES, EXCLUDES, EXCLCLASSLOADER, SESSIONID,
-			DUMPONEXIT, OUTPUT, ADDRESS, PORT, CLASSDUMPDIR, OFFLINECLASSES);
+			DUMPONEXIT, OUTPUT, ADDRESS, PORT, CLASSDUMPDIR);
 
 	private final Map<String, String> options;
 
@@ -446,26 +440,6 @@ public final class AgentOptions {
 	 */
 	public void setClassDumpDir(final String location) {
 		setOption(CLASSDUMPDIR, location);
-	}
-
-	/**
-	 * Returns whether support for offline instrumented classes is supported.
-	 * 
-	 * @return <code>true</code> when offline instrumented classes are
-	 *         supported.
-	 */
-	public boolean getOfflineClasses() {
-		return getOption(OFFLINECLASSES, false);
-	}
-
-	/**
-	 * Set whether support for offline instrumented classes is supported.
-	 * 
-	 * @param offlineClasses
-	 *            whether offline instrumented classes are supported.
-	 */
-	public void setOfflineClasses(final boolean offlineClasses) {
-		setOption(OFFLINECLASSES, offlineClasses);
 	}
 
 	private void setOption(final String key, final int value) {

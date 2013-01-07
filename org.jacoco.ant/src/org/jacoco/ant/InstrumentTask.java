@@ -57,7 +57,7 @@ public class InstrumentTask extends Task {
 
 	@Override
 	public void execute() throws BuildException {
-		final IRuntime runtime = new LoggerRuntime(true);
+		final IRuntime runtime = new LoggerRuntime();
 		final Instrumenter instrumenter = new Instrumenter(runtime);
 
 		int instrCount = 0;
