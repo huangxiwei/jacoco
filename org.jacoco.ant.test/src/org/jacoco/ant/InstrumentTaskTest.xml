@@ -31,8 +31,6 @@
 				<fileset dir="${org.jacoco.ant.instrumentTaskTest.classes.dir}"/>
 			</classfiles>
 		</jacoco:instrument>
-		
-		<au:assertFileExists file="${temp.dir}/TestTargetInDefault.class"/>
 	</target>
 
 </project>
