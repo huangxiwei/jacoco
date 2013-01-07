@@ -80,11 +80,11 @@ public class InstrumentTask extends Task {
 
 	private int instrument(final Instrumenter instrumenter,
 			final Resource resource) {
-		InputStream input = null;
-		OutputStream output = null;
 		final File file = new File(destdir, resource.getName());
 		file.getParentFile().mkdirs();
 		try {
+			InputStream input = null;
+			OutputStream output = null;
 			try {
 				input = resource.getInputStream();
 				output = new FileOutputStream(file);
