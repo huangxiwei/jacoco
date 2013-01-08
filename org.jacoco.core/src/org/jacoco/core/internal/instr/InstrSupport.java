@@ -1,5 +1,5 @@
 /*******************************************************************************
- * Copyright (c) 2009, 2012 Mountainminds GmbH & Co. KG and Contributors
+ * Copyright (c) 2009, 2013 Mountainminds GmbH & Co. KG and Contributors
  * All rights reserved. This program and the accompanying materials
  * are made available under the terms of the Eclipse Public License v1.0
  * which accompanies this distribution, and is available at
@@ -59,8 +59,6 @@ public final class InstrSupport {
 	 */
 	public static final int INITMETHOD_ACC = Opcodes.ACC_SYNTHETIC
 			| Opcodes.ACC_PRIVATE | Opcodes.ACC_STATIC | Opcodes.ACC_FINAL;
-
-	// === Utilities ===
 
 	/**
 	 * Generates the instruction to push the given int value on the stack.

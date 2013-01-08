@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <!--
-   Copyright (c) 2009, 2012 Mountainminds GmbH & Co. KG and Contributors
+   Copyright (c) 2009, 2013 Mountainminds GmbH & Co. KG and Contributors
    All rights reserved. This program and the accompanying materials
    are made available under the terms of the Eclipse Public License v1.0
    which accompanies this distribution, and is available at
@@ -17,7 +17,7 @@
   <includeBaseDirectory>false</includeBaseDirectory>
   <fileSets>
     <fileSet>
-      <directory>${basedir}/docroot</directory>
+      <directory>${basedir}/../org.jacoco.doc/docroot</directory>
       <outputDirectory>/</outputDirectory>
       <filtered>true</filtered>
       <includes>
@@ -25,7 +25,7 @@
       </includes>
     </fileSet>
     <fileSet>
-      <directory>${basedir}/target/generated-resources/xml/xslt</directory>
+      <directory>${basedir}/../org.jacoco.doc/target/generated-resources/xml/xslt</directory>
       <outputDirectory>/doc</outputDirectory>
       <filtered>false</filtered>
       <includes>
@@ -33,18 +33,18 @@
       </includes>
     </fileSet>
     <fileSet>
-      <directory>${basedir}/docroot</directory>
+      <directory>${basedir}/../org.jacoco.doc/docroot</directory>
       <outputDirectory>/</outputDirectory>
       <excludes>
         <exclude>**/*.html</exclude>
       </excludes>
     </fileSet>
     <fileSet>
-      <directory>${basedir}/target/coverage</directory>
+      <directory>${basedir}/../org.jacoco.doc/target/coverage</directory>
       <outputDirectory>/coverage</outputDirectory>
     </fileSet>
     <fileSet>
-      <directory>${basedir}/target/junit</directory>
+      <directory>${basedir}/../org.jacoco.doc/target/junit</directory>
       <outputDirectory>/test</outputDirectory>
     </fileSet>
   </fileSets>
@@ -60,7 +60,7 @@
       <outputFileNameMapping>jacocoant.jar</outputFileNameMapping>
       <useProjectArtifact>false</useProjectArtifact>
       <includes>
-        <include>${project.groupId}:org.jacoco.ant-nodeps</include>
+        <include>${project.groupId}:org.jacoco.ant:jar:nodeps</include>
       </includes>
     </dependencySet>
     <dependencySet>
@@ -83,6 +83,7 @@
       </includes>
       <excludes>
         <exclude>${project.groupId}:org.jacoco.agent:*:runtime</exclude>
+        <exclude>${project.groupId}:org.jacoco.ant:*:nodeps</exclude>
       </excludes>
     </dependencySet>
     <dependencySet>
@@ -96,12 +97,12 @@
     <dependencySet>
       <outputDirectory>/doc/api</outputDirectory>
       <unpack>true</unpack>
+      <useProjectArtifact>false</useProjectArtifact>
       <unpackOptions>
         <excludes>
           <exclude>META-INF/</exclude>
         </excludes>
       </unpackOptions>
-      <useProjectAttachments>true</useProjectAttachments>
       <includes>
         <include>${project.groupId}:org.jacoco.doc:*:javadoc</include>
       </includes>

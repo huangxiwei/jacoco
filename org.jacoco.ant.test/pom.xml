@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <!--
-   Copyright (c) 2009, 2012 Mountainminds GmbH & Co. KG and Contributors
+   Copyright (c) 2009, 2013 Mountainminds GmbH & Co. KG and Contributors
    All rights reserved. This program and the accompanying materials
    are made available under the terms of the Eclipse Public License v1.0
    which accompanies this distribution, and is available at
@@ -15,7 +15,7 @@
   <parent>
     <groupId>org.jacoco</groupId>
     <artifactId>org.jacoco.tests</artifactId>
-    <version>0.6.1-SNAPSHOT</version>
+    <version>0.6.2-SNAPSHOT</version>
     <relativePath>../org.jacoco.tests</relativePath>
   </parent>
 
@@ -31,7 +31,6 @@
     <dependency>
       <groupId>${project.groupId}</groupId>
       <artifactId>org.jacoco.ant</artifactId>
-      <version>${project.version}</version>
     </dependency>
     <dependency>
       <groupId>junit</groupId>
@@ -40,12 +39,10 @@
     <dependency>
       <groupId>org.apache.ant</groupId>
       <artifactId>ant-antunit</artifactId>
-      <version>1.2</version>
     </dependency>
     <dependency>
       <groupId>org.apache.ant</groupId>
       <artifactId>ant-junit</artifactId>
-      <version>${ant.version}</version>
     </dependency>
   </dependencies>
 

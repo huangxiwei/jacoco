@@ -1,5 +1,5 @@
 /*******************************************************************************
- * Copyright (c) 2009, 2012 Mountainminds GmbH & Co. KG and Contributors
+ * Copyright (c) 2009, 2013 Mountainminds GmbH & Co. KG and Contributors
  * All rights reserved. This program and the accompanying materials
  * are made available under the terms of the Eclipse Public License v1.0
  * which accompanies this distribution, and is available at
@@ -26,7 +26,7 @@ public final class ExecutionData {
 
 	private final String name;
 
-	private final boolean[] data;
+	private final boolean[] probes;
 
 	/**
 	 * Creates a new {@link ExecutionData} object with the given probe data.
@@ -35,13 +35,14 @@ public final class ExecutionData {
 	 *            class identifier
 	 * @param name
 	 *            VM name
-	 * @param data
+	 * @param probes
 	 *            probe data
 	 */
-	public ExecutionData(final long id, final String name, final boolean[] data) {
+	public ExecutionData(final long id, final String name,
+			final boolean[] probes) {
 		this.id = id;
 		this.name = name;
-		this.data = data;
+		this.probes = probes;
 	}
 
 	/**
@@ -52,13 +53,13 @@ public final class ExecutionData {
 	 *            class identifier
 	 * @param name
 	 *            VM name
-	 * @param dataLength
-	 *            probe data length
+	 * @param probeCount
+	 *            probe count
 	 */
-	public ExecutionData(final long id, final String name, final int dataLength) {
+	public ExecutionData(final long id, final String name, final int probeCount) {
 		this.id = id;
 		this.name = name;
-		this.data = new boolean[dataLength];
+		this.probes = new boolean[probeCount];
 	}
 
 	/**
@@ -84,34 +85,68 @@ public final class ExecutionData {
 	 * Returns the execution data probes. A value of <code>true</code> indicates
 	 * that the corresponding probe was executed.
 	 * 
-	 * @return execution data
+	 * @return probe data
 	 */
-	public boolean[] getData() {
-		return data;
+	public boolean[] getProbes() {
+		return probes;
 	}
 
 	/**
-	 * Sets all probe data entries to <code>false</code>.
+	 * Sets all probes to <code>false</code>.
 	 */
 	public void reset() {
-		Arrays.fill(data, false);
+		Arrays.fill(probes, false);
 	}
 
 	/**
 	 * Merges the given execution data into the probe data of this object. I.e.
 	 * a probe entry in this object is marked as executed (<code>true</code>) if
-	 * this probe or the corresponding other probe was executed. The probe array
-	 * of the other object is not modified.
+	 * this probe or the corresponding other probe was executed. So the result
+	 * is
+	 * 
+	 * <pre>
+	 * A or B
+	 * </pre>
+	 * 
+	 * The probe array of the other object is not modified.
 	 * 
 	 * @param other
+	 *            execution data to merge
 	 */
 	public void merge(final ExecutionData other) {
+		merge(other, true);
+	}
+
+	/**
+	 * Merges the given execution data into the probe data of this object. A
+	 * probe in this object is set to the value of <code>flag</code> if the
+	 * corresponding other probe was executed. For <code>flag==true</code> this
+	 * corresponds to
+	 * 
+	 * <pre>
+	 * A or B
+	 * </pre>
+	 * 
+	 * For <code>flag==true</code> this can be considered as a subtraction
+	 * 
+	 * <pre>
+	 * A and not B
+	 * </pre>
+	 * 
+	 * The probe array of the other object is not modified.
+	 * 
+	 * @param other
+	 *            execution data to merge
+	 * @param flag
+	 *            merge mode
+	 */
+	public void merge(final ExecutionData other, final boolean flag) {
 		assertCompatibility(other.getId(), other.getName(),
-				other.getData().length);
-		final boolean[] otherData = other.getData();
-		for (int i = 0; i < data.length; i++) {
+				other.getProbes().length);
+		final boolean[] otherData = other.getProbes();
+		for (int i = 0; i < probes.length; i++) {
 			if (otherData[i]) {
-				data[i] = true;
+				probes[i] = flag;
 			}
 		}
 	}
@@ -125,13 +160,13 @@ public final class ExecutionData {
 	 *            other class id, must be the same
 	 * @param name
 	 *            other name, must be equal to this name
-	 * @param dataLength
+	 * @param probecount
 	 *            probe data length, must be the same as for this data
 	 * @throws IllegalStateException
 	 *             if the given parameters do not match this instance
 	 */
 	public void assertCompatibility(final long id, final String name,
-			final int dataLength) throws IllegalStateException {
+			final int probecount) throws IllegalStateException {
 		if (this.id != id) {
 			throw new IllegalStateException(format(
 					"Different ids (%016x and %016x).", Long.valueOf(this.id),
@@ -142,7 +177,7 @@ public final class ExecutionData {
 					"Different class names %s and %s for id %016x.", this.name,
 					name, Long.valueOf(id)));
 		}
-		if (this.data.length != dataLength) {
+		if (this.probes.length != probecount) {
 			throw new IllegalStateException(format(
 					"Incompatible execution data for class %s with id %016x.",
 					name, Long.valueOf(id)));
@@ -151,7 +186,7 @@ public final class ExecutionData {
 
 	@Override
 	public String toString() {
-		return String.format("ExecutionData [name=%s, id=%016x]", name,
+		return String.format("ExecutionData[name=%s, id=%016x]", name,
 				Long.valueOf(id));
 	}
 }

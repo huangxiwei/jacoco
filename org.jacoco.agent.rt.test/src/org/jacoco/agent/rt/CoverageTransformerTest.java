@@ -1,5 +1,5 @@
 /*******************************************************************************
- * Copyright (c) 2009, 2012 Mountainminds GmbH & Co. KG and Contributors
+ * Copyright (c) 2009, 2013 Mountainminds GmbH & Co. KG and Contributors
  * All rights reserved. This program and the accompanying materials
  * are made available under the terms of the Eclipse Public License v1.0
  * which accompanies this distribution, and is available at
@@ -23,10 +23,12 @@ import java.io.InputStream;
 import java.lang.instrument.IllegalClassFormatException;
 
 import org.jacoco.core.JaCoCo;
+import org.jacoco.core.runtime.AbstractRuntime;
 import org.jacoco.core.runtime.AgentOptions;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
+import org.objectweb.asm.MethodVisitor;
 
 /**
  * Unit tests for {@link CoverageTransformer}.
@@ -167,6 +169,32 @@ public class CoverageTransformerTest {
 		}
 		in.close();
 		return out.toByteArray();
+	}
+
+	private static class StubRuntime extends AbstractRuntime {
+
+		private Class<?> disconnected;
+
+		public StubRuntime() {
+		}
+
+		public int generateDataAccessor(long classid, String classname,
+				int probecount, MethodVisitor mv) {
+			return 0;
+		}
+
+		public void shutdown() {
+		}
+
+		@Override
+		public void disconnect(Class<?> type) throws Exception {
+			this.disconnected = type;
+		}
+
+		public void assertDisconnected(Class<?> expected) {
+			assertEquals(expected, disconnected);
+		}
+
 	}
 
 }

@@ -1,5 +1,5 @@
 /*******************************************************************************
- * Copyright (c) 2009, 2012 Mountainminds GmbH & Co. KG and Contributors
+ * Copyright (c) 2009, 2013 Mountainminds GmbH & Co. KG and Contributors
  * All rights reserved. This program and the accompanying materials
  * are made available under the terms of the Eclipse Public License v1.0
  * which accompanies this distribution, and is available at
@@ -12,8 +12,9 @@
 package org.jacoco.core.test.validation.targets;
 
 /**
- * Switch block with a disabled case. Used to test that the number of branches on the switch
- * line correctly reflects that one of the branches is entirely disabled.
+ * Switch block with a disabled case. Used to test that the number of branches
+ * on the switch line correctly reflects that one of the branches is entirely
+ * disabled.
  */
 public class Target13 {
 	public static void main(String[] xiArgs) {

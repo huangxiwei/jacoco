@@ -1,5 +1,5 @@
 /*******************************************************************************
- * Copyright (c) 2009, 2012 Mountainminds GmbH & Co. KG and Contributors
+ * Copyright (c) 2009, 2013 Mountainminds GmbH & Co. KG and Contributors
  * All rights reserved. This program and the accompanying materials
  * are made available under the terms of the Eclipse Public License v1.0
  * which accompanies this distribution, and is available at
@@ -57,8 +57,8 @@ public final class ExecDump {
 			public void visitClassExecution(final ExecutionData data) {
 				System.out.printf("%016x  %3d of %3d   %s%n",
 						Long.valueOf(data.getId()),
-						Integer.valueOf(getHitCount(data.getData())),
-						Integer.valueOf(data.getData().length), data.getName());
+						Integer.valueOf(getHitCount(data.getProbes())),
+						Integer.valueOf(data.getProbes().length), data.getName());
 			}
 		});
 		reader.read();

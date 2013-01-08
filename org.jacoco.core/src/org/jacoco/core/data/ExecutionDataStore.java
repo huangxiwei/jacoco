@@ -1,5 +1,5 @@
 /*******************************************************************************
- * Copyright (c) 2009, 2012 Mountainminds GmbH & Co. KG and Contributors
+ * Copyright (c) 2009, 2013 Mountainminds GmbH & Co. KG and Contributors
  * All rights reserved. This program and the accompanying materials
  * are made available under the terms of the Eclipse Public License v1.0
  * which accompanies this distribution, and is available at
@@ -50,6 +50,40 @@ public final class ExecutionDataStore implements IExecutionDataVisitor {
 	}
 
 	/**
+	 * Subtracts the probes in the given {@link ExecutionData} object from the
+	 * store. I.e. for all set probes in the given data object the corresponding
+	 * probes in this store will be unset. If there is no execution data with id
+	 * of the given data object this operation will have no effect.
+	 * 
+	 * @param data
+	 *            execution data to subtract
+	 * @throws IllegalStateException
+	 *             if the given {@link ExecutionData} object is not compatible
+	 *             to a corresponding one, that is already contained
+	 * @see ExecutionData#assertCompatibility(long, String, int)
+	 */
+	public void subtract(final ExecutionData data) throws IllegalStateException {
+		final Long id = Long.valueOf(data.getId());
+		final ExecutionData entry = entries.get(id);
+		if (entry != null) {
+			entry.merge(data, false);
+		}
+	}
+
+	/**
+	 * Subtracts all probes in the given execution data store from this store.
+	 * 
+	 * @param store
+	 *            execution data store to subtract
+	 * @see #subtract(ExecutionData)
+	 */
+	public void subtract(final ExecutionDataStore store) {
+		for (final ExecutionData data : store.getContents()) {
+			subtract(data);
+		}
+	}
+
+	/**
 	 * Returns the {@link ExecutionData} entry with the given id if it exists in
 	 * this store.
 	 * 
@@ -69,18 +103,18 @@ public final class ExecutionDataStore implements IExecutionDataVisitor {
 	 *            class identifier
 	 * @param name
 	 *            VM name of the class
-	 * @param dataLength
+	 * @param probecount
 	 *            probe data length
 	 * @return execution data
 	 */
 	public ExecutionData get(final Long id, final String name,
-			final int dataLength) {
+			final int probecount) {
 		ExecutionData entry = entries.get(id);
 		if (entry == null) {
-			entry = new ExecutionData(id.longValue(), name, dataLength);
+			entry = new ExecutionData(id.longValue(), name, probecount);
 			entries.put(id, entry);
 		} else {
-			entry.assertCompatibility(id.longValue(), name, dataLength);
+			entry.assertCompatibility(id.longValue(), name, probecount);
 		}
 		return entry;
 	}

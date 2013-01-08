@@ -1,5 +1,5 @@
 /*******************************************************************************
- * Copyright (c) 2009, 2012 Mountainminds GmbH & Co. KG and Contributors
+ * Copyright (c) 2009, 2013 Mountainminds GmbH & Co. KG and Contributors
  * All rights reserved. This program and the accompanying materials
  * are made available under the terms of the Eclipse Public License v1.0
  * which accompanies this distribution, and is available at
@@ -12,7 +12,7 @@
 package org.jacoco.agent.rt.controller;
 
 import org.jacoco.core.runtime.AgentOptions;
-import org.jacoco.core.runtime.IRuntime;
+import org.jacoco.core.runtime.RuntimeData;
 
 /**
  * Common interface for different implementations that control execution data
@@ -26,12 +26,12 @@ public interface IAgentController {
 	 * 
 	 * @param options
 	 *            Options used to configure the agent controller
-	 * @param runtime
-	 *            Coverage runtime this agent controller will be connected to
+	 * @param data
+	 *            Execution data for this agent
 	 * @throws Exception
 	 *             in case startup fails
 	 */
-	public void startup(final AgentOptions options, final IRuntime runtime)
+	public void startup(final AgentOptions options, final RuntimeData data)
 			throws Exception;
 
 	/**

@@ -1,5 +1,5 @@
 /*******************************************************************************
- * Copyright (c) 2009, 2012 Mountainminds GmbH & Co. KG and Contributors
+ * Copyright (c) 2009, 2013 Mountainminds GmbH & Co. KG and Contributors
  * All rights reserved. This program and the accompanying materials
  * are made available under the terms of the Eclipse Public License v1.0
  * which accompanies this distribution, and is available at
@@ -14,6 +14,7 @@ package org.jacoco.core.test.perf;
 import org.jacoco.core.instr.Instrumenter;
 import org.jacoco.core.runtime.IRuntime;
 import org.jacoco.core.runtime.LoggerRuntime;
+import org.jacoco.core.runtime.RuntimeData;
 import org.jacoco.core.test.TargetLoader;
 import org.objectweb.asm.ClassReader;
 
@@ -35,7 +36,7 @@ public class ExecuteInstrumentedCodeScenario extends TimedScenario {
 	protected Runnable getInstrumentedRunnable() throws Exception {
 		ClassReader reader = new ClassReader(TargetLoader.getClassData(target));
 		IRuntime runtime = new LoggerRuntime();
-		runtime.startup();
+		runtime.startup(new RuntimeData());
 		final Instrumenter instr = new Instrumenter(runtime);
 		final byte[] instrumentedBuffer = instr.instrument(reader);
 		final TargetLoader loader = new TargetLoader(target, instrumentedBuffer);

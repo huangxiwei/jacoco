@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <!--
-   Copyright (c) 2009, 2012 Mountainminds GmbH & Co. KG and Contributors
+   Copyright (c) 2009, 2013 Mountainminds GmbH & Co. KG and Contributors
    All rights reserved. This program and the accompanying materials
    are made available under the terms of the Eclipse Public License v1.0
    which accompanies this distribution, and is available at
@@ -15,17 +15,15 @@
   <parent>
     <groupId>org.jacoco</groupId>
     <artifactId>org.jacoco.build</artifactId>
-    <version>0.6.1-SNAPSHOT</version>
+    <version>0.6.2-SNAPSHOT</version>
     <relativePath>../org.jacoco.build</relativePath>
   </parent>
 
   <artifactId>org.jacoco.ant</artifactId>
-  <packaging>eclipse-plugin</packaging>
 
   <name>JaCoCo :: Ant</name>
   <description>JaCoCo Ant Tasks</description>
 
-  <!-- Note that Tycho doesn't use those dependencies, but we need to declare them for consumers -->
   <dependencies>
     <dependency>
       <groupId>${project.groupId}</groupId>
@@ -48,5 +46,31 @@
 
   <build>
     <sourceDirectory>src</sourceDirectory>
+
+    <plugins>
+      <plugin>
+        <groupId>org.apache.maven.plugins</groupId>
+        <artifactId>maven-shade-plugin</artifactId>
+        <executions>
+          <execution>
+            <phase>package</phase>
+            <goals>
+              <goal>shade</goal>
+            </goals>
+            <configuration>
+              <shadedArtifactAttached>true</shadedArtifactAttached>
+              <shadedClassifierName>nodeps</shadedClassifierName>
+              <minimizeJar>true</minimizeJar>
+              <relocations>
+                <relocation>
+                  <pattern>org.objectweb.asm</pattern>
+                  <shadedPattern>org.jacoco.asm</shadedPattern>
+                </relocation>
+              </relocations>
+            </configuration>
+          </execution>
+        </executions>
+      </plugin>
+    </plugins>
   </build>
 </project>

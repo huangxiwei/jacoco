@@ -1,5 +1,5 @@
 /*******************************************************************************
- * Copyright (c) 2009, 2012 Mountainminds GmbH & Co. KG and Contributors
+ * Copyright (c) 2009, 2013 Mountainminds GmbH & Co. KG and Contributors
  * All rights reserved. This program and the accompanying materials
  * are made available under the terms of the Eclipse Public License v1.0
  * which accompanies this distribution, and is available at
@@ -18,7 +18,7 @@ import java.net.UnknownHostException;
 
 import org.jacoco.agent.rt.IExceptionLogger;
 import org.jacoco.core.runtime.AgentOptions;
-import org.jacoco.core.runtime.IRuntime;
+import org.jacoco.core.runtime.RuntimeData;
 
 /**
  * Controller that opens TCP server socket. This controller uses the following
@@ -48,7 +48,7 @@ public class TcpServerController implements IAgentController {
 		this.logger = logger;
 	}
 
-	public void startup(final AgentOptions options, final IRuntime runtime)
+	public void startup(final AgentOptions options, final RuntimeData data)
 			throws IOException {
 		serverSocket = createServerSocket(options);
 		worker = new Thread(new Runnable() {
@@ -57,7 +57,7 @@ public class TcpServerController implements IAgentController {
 					try {
 						synchronized (serverSocket) {
 							connection = new TcpConnection(
-									serverSocket.accept(), runtime);
+									serverSocket.accept(), data);
 						}
 						connection.init();
 						connection.run();

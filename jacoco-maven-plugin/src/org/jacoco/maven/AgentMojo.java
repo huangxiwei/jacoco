@@ -1,5 +1,5 @@
 /*******************************************************************************
- * Copyright (c) 2009, 2012 Mountainminds GmbH & Co. KG and Contributors
+ * Copyright (c) 2009, 2013 Mountainminds GmbH & Co. KG and Contributors
  * All rights reserved. This program and the accompanying materials
  * are made available under the terms of the Eclipse Public License v1.0
  * which accompanies this distribution, and is available at
@@ -167,6 +167,15 @@ public class AgentMojo extends AbstractJacocoMojo {
 	public void executeMojo() {
 		final String vmArgument = StringUtils.quoteAndEscape(
 				createAgentOptions().getVMArgument(getAgentJarFile()), '"');
+		prependProperty(vmArgument);
+	}
+
+	@Override
+	protected void skipMojo() {
+		prependProperty("");
+	}
+
+	private void prependProperty(String vmArgument) {
 		if (isPropertyNameSpecified()) {
 			prependProperty(propertyName, vmArgument);
 		} else if (isEclipseTestPluginPackaging()) {

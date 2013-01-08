@@ -1,5 +1,5 @@
 /*******************************************************************************
- * Copyright (c) 2009, 2012 Mountainminds GmbH & Co. KG and Contributors
+ * Copyright (c) 2009, 2013 Mountainminds GmbH & Co. KG and Contributors
  * All rights reserved. This program and the accompanying materials
  * are made available under the terms of the Eclipse Public License v1.0
  * which accompanies this distribution, and is available at
@@ -16,9 +16,8 @@ import static org.junit.Assert.assertTrue;
 import java.io.File;
 import java.io.IOException;
 
-import org.jacoco.agent.rt.StubRuntime;
 import org.jacoco.core.runtime.AgentOptions;
-import org.jacoco.core.runtime.IRuntime;
+import org.jacoco.core.runtime.RuntimeData;
 import org.junit.Rule;
 import org.junit.Test;
 import org.junit.rules.TemporaryFolder;
@@ -37,10 +36,8 @@ public class LocalControllerTest {
 		AgentOptions options = new AgentOptions();
 		options.setDestfile(destFile.getAbsolutePath());
 
-		IRuntime runtime = new StubRuntime();
-
 		LocalController controller = new LocalController();
-		controller.startup(options, runtime);
+		controller.startup(options, new RuntimeData());
 		controller.writeExecutionData();
 		controller.shutdown();
 
@@ -51,11 +48,10 @@ public class LocalControllerTest {
 	public void testInvalidDestFile() throws Exception {
 		AgentOptions options = new AgentOptions();
 		options.setDestfile(folder.newFolder("folder").getAbsolutePath());
-		IRuntime runtime = new StubRuntime();
 		LocalController controller = new LocalController();
 
 		// Startup should fail as the file can not be created:
-		controller.startup(options, runtime);
+		controller.startup(options, new RuntimeData());
 	}
 
 }

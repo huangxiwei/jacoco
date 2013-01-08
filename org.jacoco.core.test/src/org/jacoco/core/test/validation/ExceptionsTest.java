@@ -1,5 +1,5 @@
 /*******************************************************************************
- * Copyright (c) 2009, 2012 Mountainminds GmbH & Co. KG and Contributors
+ * Copyright (c) 2009, 2013 Mountainminds GmbH & Co. KG and Contributors
  * All rights reserved. This program and the accompanying materials
  * are made available under the terms of the Eclipse Public License v1.0
  * which accompanies this distribution, and is available at
@@ -96,7 +96,10 @@ public class ExceptionsTest extends ValidationTestBase {
 
 		// 9. Finally block conditional coverage
 		// Fully covered
-		assertLine("finallyBranchCoverage.finally", ICounter.FULLY_COVERED);
+		// Can't test instruction coverage because there is only an instruction
+		// on this line if the finally block duplicate is the one which isn't
+		// excluded which depends on the compiler specific emitted bytecode.
+		// assertLine("finallyBranchCoverage.finally", ICounter.FULLY_COVERED);
 		assertLine("finallyBranchCoverage.cond1", ICounter.FULLY_COVERED, 0, 2);
 		assertLine("finallyBranchCoverage.contents1", ICounter.FULLY_COVERED);
 		assertLine("finallyBranchCoverage.cond2", ICounter.FULLY_COVERED, 0, 2);

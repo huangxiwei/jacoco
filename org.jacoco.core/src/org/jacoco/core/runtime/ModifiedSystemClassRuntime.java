@@ -1,5 +1,5 @@
 /*******************************************************************************
- * Copyright (c) 2009, 2012 Mountainminds GmbH & Co. KG and Contributors
+ * Copyright (c) 2009, 2013 Mountainminds GmbH & Co. KG and Contributors
  * All rights reserved. This program and the accompanying materials
  * are made available under the terms of the Eclipse Public License v1.0
  * which accompanies this distribution, and is available at
@@ -58,10 +58,11 @@ public class ModifiedSystemClassRuntime extends AbstractRuntime {
 		this.accessFieldName = accessFieldName;
 	}
 
-	public void startup() throws Exception {
-		setStartTimeStamp();
+	@Override
+	public void startup(final RuntimeData data) throws Exception {
+		super.startup(data);
 		final Field field = systemClass.getField(accessFieldName);
-		field.set(null, new ExecutionDataAccess(store));
+		field.set(null, data);
 	}
 
 	public void shutdown() {
@@ -74,8 +75,7 @@ public class ModifiedSystemClassRuntime extends AbstractRuntime {
 		mv.visitFieldInsn(Opcodes.GETSTATIC, systemClassName, accessFieldName,
 				ACCESS_FIELD_TYPE);
 
-		ExecutionDataAccess.generateAccessCall(classid, classname, probecount,
-				mv);
+		RuntimeData.generateAccessCall(classid, classname, probecount, mv);
 
 		return 6;
 	}

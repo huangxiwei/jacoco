@@ -1,5 +1,5 @@
 /*******************************************************************************
- * Copyright (c) 2009, 2012 Mountainminds GmbH & Co. KG and Contributors
+ * Copyright (c) 2009, 2013 Mountainminds GmbH & Co. KG and Contributors
  * All rights reserved. This program and the accompanying materials
  * are made available under the terms of the Eclipse Public License v1.0
  * which accompanies this distribution, and is available at
@@ -16,16 +16,16 @@ import java.net.Socket;
 import java.net.SocketException;
 
 import org.jacoco.core.runtime.IRemoteCommandVisitor;
-import org.jacoco.core.runtime.IRuntime;
 import org.jacoco.core.runtime.RemoteControlReader;
 import org.jacoco.core.runtime.RemoteControlWriter;
+import org.jacoco.core.runtime.RuntimeData;
 
 /**
  * Handler for a single socket based remote connection.
  */
 class TcpConnection implements IRemoteCommandVisitor {
 
-	private final IRuntime runtime;
+	private final RuntimeData data;
 
 	private final Socket socket;
 
@@ -35,9 +35,9 @@ class TcpConnection implements IRemoteCommandVisitor {
 
 	private boolean initialized;
 
-	public TcpConnection(final Socket socket, final IRuntime runtime) {
+	public TcpConnection(final Socket socket, final RuntimeData data) {
 		this.socket = socket;
-		this.runtime = runtime;
+		this.data = data;
 		this.initialized = false;
 	}
 
@@ -97,10 +97,10 @@ class TcpConnection implements IRemoteCommandVisitor {
 	public void visitDumpCommand(final boolean dump, final boolean reset)
 			throws IOException {
 		if (dump) {
-			runtime.collect(writer, writer, reset);
+			data.collect(writer, writer, reset);
 		} else {
 			if (reset) {
-				runtime.reset();
+				data.reset();
 			}
 		}
 		writer.sendCmdOk();

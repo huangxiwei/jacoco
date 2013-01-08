@@ -1,5 +1,5 @@
 /*******************************************************************************
- * Copyright (c) 2009, 2012 Mountainminds GmbH & Co. KG and Contributors
+ * Copyright (c) 2009, 2013 Mountainminds GmbH & Co. KG and Contributors
  * All rights reserved. This program and the accompanying materials
  * are made available under the terms of the Eclipse Public License v1.0
  * which accompanies this distribution, and is available at
@@ -14,6 +14,7 @@ package org.jacoco.maven;
 
 import java.io.File;
 import java.io.IOException;
+import java.math.BigDecimal;
 
 import org.apache.maven.plugin.MojoExecutionException;
 import org.jacoco.core.analysis.IBundleCoverage;
@@ -155,10 +156,14 @@ public class CheckMojo extends AbstractJacocoMojo {
 		if (ratio < checkRatio) {
 			this.getLog().warn(
 					String.format(INSUFFICIENT_COVERAGE, entity.name(),
-							Double.valueOf(ratio), Double.valueOf(checkRatio)));
+							truncate(ratio), truncate(checkRatio)));
 			passed = false;
 		}
 		return passed;
+	}
+
+	private BigDecimal truncate(final double value) {
+		return new BigDecimal(value).setScale(2, BigDecimal.ROUND_FLOOR);
 	}
 
 	private void handleFailure() throws MojoExecutionException {

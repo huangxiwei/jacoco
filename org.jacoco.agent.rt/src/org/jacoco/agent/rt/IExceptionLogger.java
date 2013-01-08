@@ -1,5 +1,5 @@
 /*******************************************************************************
- * Copyright (c) 2009, 2012 Mountainminds GmbH & Co. KG and Contributors
+ * Copyright (c) 2009, 2013 Mountainminds GmbH & Co. KG and Contributors
  * All rights reserved. This program and the accompanying materials
  * are made available under the terms of the Eclipse Public License v1.0
  * which accompanies this distribution, and is available at
@@ -16,6 +16,15 @@ package org.jacoco.agent.rt;
  * testability these exceptions are emitted against this interface.
  */
 public interface IExceptionLogger {
+
+	/**
+	 * Default implementation which dumps the stack trace to System.err.
+	 */
+	IExceptionLogger SYSTEM_ERR = new IExceptionLogger() {
+		public void logExeption(final Exception ex) {
+			ex.printStackTrace();
+		}
+	};
 
 	/**
 	 * Logs the given exception.

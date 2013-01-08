@@ -1,5 +1,5 @@
 /*******************************************************************************
- * Copyright (c) 2009, 2012 Mountainminds GmbH & Co. KG and Contributors
+ * Copyright (c) 2009, 2013 Mountainminds GmbH & Co. KG and Contributors
  * All rights reserved. This program and the accompanying materials
  * are made available under the terms of the Eclipse Public License v1.0
  * which accompanies this distribution, and is available at
@@ -13,10 +13,10 @@
 package org.jacoco.core.internal.analysis;
 
 import java.util.ArrayList;
-import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
+import java.util.TreeMap;
 
 import org.jacoco.core.analysis.ICounter;
 import org.jacoco.core.analysis.IMethodCoverage;
@@ -35,7 +35,7 @@ import org.objectweb.asm.Opcodes;
  */
 public class MethodAnalyzer extends MethodProbesVisitor {
 
-	private final boolean[] executionData;
+	private final boolean[] probes;
 
 	private final ICoverageFilterStatus coverageFilterStatus;
 
@@ -66,7 +66,7 @@ public class MethodAnalyzer extends MethodProbesVisitor {
 	private Instruction lastInsn;
 
 	/** Map: LineNo: List of line duplicates: List of instructions */
-	private final Map<Integer, List<List<Instruction>>> lineInsDups = new HashMap<Integer, List<List<Instruction>>>();
+	private final Map<Integer, List<List<Instruction>>> lineInsDups = new TreeMap<Integer, List<List<Instruction>>>();
 
 	/** Instructions on the current line */
 	private List<Instruction> currentLineIns = null;
@@ -81,17 +81,17 @@ public class MethodAnalyzer extends MethodProbesVisitor {
 	 * @param signature
 	 *            optional parameterized signature
 	 * 
-	 * @param executionData
+	 * @param probes
 	 *            recorded probe date of the containing class or
 	 *            <code>null</code> if the class is not executed at all
 	 * @param coverageFilterStatus
 	 *            filter which restricts the coverage data
 	 */
 	public MethodAnalyzer(final String name, final String desc,
-			final String signature, final boolean[] executionData,
+			final String signature, final boolean[] probes,
 			final ICoverageFilterStatus coverageFilterStatus) {
 		super();
-		this.executionData = executionData;
+		this.probes = probes;
 		this.coverageFilterStatus = coverageFilterStatus;
 		this.coverage = new MethodCoverageImpl(name, desc, signature);
 	}
@@ -303,7 +303,7 @@ public class MethodAnalyzer extends MethodProbesVisitor {
 		 * List of line clusters, Each line cluster is a list of line
 		 * duplicates, Each line duplicate is a list of instructions
 		 */
-		final Map<Integer, List<List<List<Instruction>>>> lineInsDupClustersMap = new HashMap<Integer, List<List<List<Instruction>>>>();
+		final Map<Integer, List<List<List<Instruction>>>> lineInsDupClustersMap = new TreeMap<Integer, List<List<List<Instruction>>>>();
 		for (final Entry<Integer, List<List<Instruction>>> lineInsDupEntry : lineInsDups
 				.entrySet()) {
 			if (lineInsDupEntry.getValue().size() > 1) {
@@ -364,8 +364,9 @@ public class MethodAnalyzer extends MethodProbesVisitor {
 			p.setDisabled();
 		}
 		// Propagate coverage into line duplicates:
-		for (final List<List<List<Instruction>>> clusters : lineInsDupClustersMap
-				.values()) {
+		for (final Entry<Integer, List<List<List<Instruction>>>> entry : lineInsDupClustersMap
+				.entrySet()) {
+			final List<List<List<Instruction>>> clusters = entry.getValue();
 			for (final List<List<Instruction>> cluster : clusters) {
 				boolean seenCovered = false;
 				for (final List<Instruction> lineIns : cluster) {
@@ -471,7 +472,7 @@ public class MethodAnalyzer extends MethodProbesVisitor {
 	private void addProbe(final int probeId) {
 		if (lastInsn != null) {
 			lastInsn.addBranch();
-			if (executionData != null && executionData[probeId]) {
+			if (probes != null && probes[probeId]) {
 				coveredProbes.add(lastInsn);
 			}
 

@@ -1,5 +1,5 @@
 /*******************************************************************************
- * Copyright (c) 2009, 2012 Mountainminds GmbH & Co. KG and Contributors
+ * Copyright (c) 2009, 2013 Mountainminds GmbH & Co. KG and Contributors
  * All rights reserved. This program and the accompanying materials
  * are made available under the terms of the Eclipse Public License v1.0
  * which accompanies this distribution, and is available at
@@ -25,7 +25,7 @@ import org.objectweb.asm.Opcodes;
 public class ClassAnalyzer extends ClassProbesVisitor {
 
 	private final long classid;
-	private final boolean executionData[];
+	private final boolean probes[];
 	private final StringPool stringPool;
 	private final ICoverageFilter coverageFilter;
 
@@ -36,17 +36,17 @@ public class ClassAnalyzer extends ClassProbesVisitor {
 	 * 
 	 * @param classid
 	 *            id of the class
-	 * @param executionData
+	 * @param probes
 	 *            execution data for this class or <code>null</code>
 	 * @param stringPool
 	 *            shared pool to minimize the number of {@link String} instances
 	 * @param coverageFilter
 	 *            filter which restricts the coverage data
 	 */
-	public ClassAnalyzer(final long classid, final boolean[] executionData,
+	public ClassAnalyzer(final long classid, final boolean[] probes,
 			final StringPool stringPool, final ICoverageFilter coverageFilter) {
 		this.classid = classid;
-		this.executionData = executionData;
+		this.probes = probes;
 		this.stringPool = stringPool;
 		this.coverageFilter = coverageFilter;
 	}
@@ -91,7 +91,7 @@ public class ClassAnalyzer extends ClassProbesVisitor {
 		}
 
 		final MethodAnalyzer visitor = new MethodAnalyzer(stringPool.get(name),
-				stringPool.get(desc), stringPool.get(signature), executionData,
+				stringPool.get(desc), stringPool.get(signature), probes,
 				coverageFilter) {
 			@Override
 			public void visitEnd() {

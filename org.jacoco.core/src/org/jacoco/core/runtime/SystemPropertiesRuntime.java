@@ -1,5 +1,5 @@
 /*******************************************************************************
- * Copyright (c) 2009, 2012 Mountainminds GmbH & Co. KG and Contributors
+ * Copyright (c) 2009, 2013 Mountainminds GmbH & Co. KG and Contributors
  * All rights reserved. This program and the accompanying materials
  * are made available under the terms of the Eclipse Public License v1.0
  * which accompanies this distribution, and is available at
@@ -55,17 +55,17 @@ public class SystemPropertiesRuntime extends AbstractRuntime {
 
 		// Stack[0]: Ljava/lang/Object;
 
-		ExecutionDataAccess.generateAccessCall(classid, classname, probecount,
-				mv);
+		RuntimeData.generateAccessCall(classid, classname, probecount, mv);
 
 		// Stack[0]: [Z
 
 		return 6; // Maximum local stack size is 3
 	}
 
-	public void startup() {
-		setStartTimeStamp();
-		System.getProperties().put(key, access);
+	@Override
+	public void startup(final RuntimeData data) throws Exception {
+		super.startup(data);
+		System.getProperties().put(key, data);
 	}
 
 	public void shutdown() {

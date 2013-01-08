@@ -1,5 +1,5 @@
 /*******************************************************************************
- * Copyright (c) 2009, 2012 Mountainminds GmbH & Co. KG and Contributors
+ * Copyright (c) 2009, 2013 Mountainminds GmbH & Co. KG and Contributors
  * All rights reserved. This program and the accompanying materials
  * are made available under the terms of the Eclipse Public License v1.0
  * which accompanies this distribution, and is available at
@@ -24,8 +24,8 @@ import java.util.zip.ZipInputStream;
 
 import org.jacoco.core.data.ExecutionData;
 import org.jacoco.core.data.ExecutionDataStore;
+import org.jacoco.core.internal.ContentTypeDetector;
 import org.jacoco.core.internal.analysis.ClassAnalyzer;
-import org.jacoco.core.internal.analysis.ContentTypeDetector;
 import org.jacoco.core.internal.analysis.StringPool;
 import org.jacoco.core.internal.analysis.filters.CommentExclusionsCoverageFilter;
 import org.jacoco.core.internal.analysis.filters.CompositeCoverageFilter;
@@ -111,8 +111,8 @@ public class Analyzer {
 	 */
 	private ClassVisitor createAnalyzingVisitor(final long classid) {
 		final ExecutionData data = executionData.get(classid);
-		final boolean[] classExec = data == null ? null : data.getData();
-		final ClassAnalyzer analyzer = new ClassAnalyzer(classid, classExec,
+		final boolean[] probes = data == null ? null : data.getProbes();
+		final ClassAnalyzer analyzer = new ClassAnalyzer(classid, probes,
 				stringPool, coverageFilter) {
 			@Override
 			public void visitEnd() {
