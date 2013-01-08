@@ -12,7 +12,7 @@ title: Home
 <h2>Download</h2>
 
 <ul>
-<li><a href="http://mchr3k-eclipse.appspot.com/files/jacoco-0.6.1.201301062310.zip">jacoco-0.6.1.201301062310.zip</a> (06/01/2013)
+<li><a href="http://mchr3k-eclipse.appspot.com/files/jacoco-0.6.2.201301080920.zip">jacoco-0.6.2.201301080920.zip</a> (08/01/2013)
 </ul>
 
 <h2>User Guide</h2>
@@ -83,10 +83,99 @@ title: Home
   </ul>
 </ul>
 
+<h2>Clover to JaCoCo Migration</h2>
+
+<p>Source directives are currently supported by Clover so this section discussed how to migrate
+your build from Clover to JaCoCo. This example also assumes you will use offline instrumentation
+which allows tools like Powermock to work.
+
+<p>These instructions assume you store the required jacoco jars in the following locations:
+<ul>
+<li>lib/build/jacocoant.jar
+<li>lib/test/jacocoagent.jar
+</ul>
+
+<h3>Task Definitions</h3>
+<p>Clover
+<pre>
+&lt;taskdef resource="clovertasks" /&gt;
+&lt;typedef resource="clovertypes" /&gt;
+</pre>
+<p>JaCoCo
+<pre>
+&lt;taskdef resource="org/jacoco/ant/antlib.xml"&gt;
+  &lt;classpath path="lib/build/jacocoant.jar"/&gt;
+&lt;/taskdef&gt;
+</pre>
+
+<h3>Instrumentation</h3>
+<p>Clover
+<pre>
+&lt;clover-setup initString="./reports/coverage/metadata/coverage.db"&gt;
+  &lt;fileset dir="./build/src" /&gt;
+&lt;/clover-setup&gt;
+&lt;clover-clean /&gt;
+        
+&lt;javac destdir="./build/classes_instr" debug="true"&gt;
+  &lt;src path="./build/src" /&gt;
+  &lt;classpath&gt;
+    &lt;fileset dir="./lib" includes="*.jar" /&gt;
+    &lt;fileset dir="./lib/test" includes="*.jar" /&gt;
+  &lt;/classpath&gt;
+&lt;/javac&gt;
+</pre>
+<p>JaCoCo
+<pre>
+&lt;instrument destdir="./build/classes_instr"&gt;
+  &lt;fileset dir="./build/classes" includes="**/*.class"/&gt;
+&lt;/instrument&gt;
+</pre>
+
+<h3>Running Tests</h3>
+
+<p>Clover - include clover.jar in junit classpath.
+<p>JaCoCo - include jacocoagent.jar in junit classpath. You also need to set a sysproperty within the junit task:
+<pre>&lt;sysproperty key="jacoco-agent.destfile" file="./reports/coverage/jacoco.exec"/&gt;</pre>
+
+<h3>Generating Reports</h3>
+
+<p>Clover
+<pre>
+&lt;clover-report&gt;
+  &lt;current outfile="./reports/coverage"&gt;
+    &lt;format type="html" orderBy="ElementsCoveredDesc" /&gt;
+  &lt;/current&gt;
+  &lt;current outfile="./reports/coverage/current.xml" /&gt;
+&lt;/clover-report&gt;
+</pre>
+
+<p>JaCoCo
+<pre>
+&lt;report&gt;
+  &lt;options&gt;
+    &lt;sourcedirectives/&gt;
+  &lt;/options&gt;
+  &lt;executiondata&gt;
+    &lt;file file="./reports/coverage/jacoco.exec"/&gt;
+  &lt;/executiondata&gt;
+  &lt;structure name="ProjectName"&gt;
+    &lt;classfiles&gt;
+      &lt;fileset dir="./build/classes"/&gt;
+    &lt;/classfiles&gt;
+    &lt;sourcefiles encoding="UTF-8"&gt;
+      &lt;fileset dir="./src"/&gt;
+    &lt;/sourcefiles&gt;
+  &lt;/structure&gt;
+  &lt;html destdir="./reports/coverage"/&gt;
+&lt;/report&gt;
+</pre>
+
 <h2>Progress</h2>
 
-<h3>Upcoming</h3>
-<p>Merge latest JaCoCo changes, remove local offline instrumentation implementation.
+<h3>08/01/2013</h3>
+<ul>
+<li>Merge latest JaCoCo changes, remove local offline instrumentation implementation.
+</ul>
 
 <h3>06/01/2013</h3>
 <ul>
