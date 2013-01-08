@@ -97,12 +97,12 @@ which allows tools like Powermock to work.
 
 <h3>Task Definitions</h3>
 <p>Clover
-<pre>
+<pre class="prettyprint lang-xml">
 &lt;taskdef resource="clovertasks" /&gt;
 &lt;typedef resource="clovertypes" /&gt;
 </pre>
 <p>JaCoCo
-<pre>
+<pre class="prettyprint lang-xml">
 &lt;taskdef resource="org/jacoco/ant/antlib.xml"&gt;
   &lt;classpath path="lib/build/jacocoant.jar"/&gt;
 &lt;/taskdef&gt;
@@ -110,7 +110,7 @@ which allows tools like Powermock to work.
 
 <h3>Instrumentation</h3>
 <p>Clover
-<pre>
+<pre class="prettyprint lang-xml">
 &lt;clover-setup initString="./reports/coverage/metadata/coverage.db"&gt;
   &lt;fileset dir="./build/src" /&gt;
 &lt;/clover-setup&gt;
@@ -125,7 +125,7 @@ which allows tools like Powermock to work.
 &lt;/javac&gt;
 </pre>
 <p>JaCoCo
-<pre>
+<pre class="prettyprint lang-xml">
 &lt;instrument destdir="./build/classes_instr"&gt;
   &lt;fileset dir="./build/classes" includes="**/*.class"/&gt;
 &lt;/instrument&gt;
@@ -140,7 +140,7 @@ which allows tools like Powermock to work.
 <h3>Generating Reports</h3>
 
 <p>Clover
-<pre>
+<pre class="prettyprint lang-xml">
 &lt;clover-report&gt;
   &lt;current outfile="./reports/coverage"&gt;
     &lt;format type="html" orderBy="ElementsCoveredDesc" /&gt;
@@ -150,7 +150,7 @@ which allows tools like Powermock to work.
 </pre>
 
 <p>JaCoCo
-<pre>
+<pre class="prettyprint lang-xml">
 &lt;report&gt;
   &lt;options&gt;
     &lt;sourcedirectives/&gt;
