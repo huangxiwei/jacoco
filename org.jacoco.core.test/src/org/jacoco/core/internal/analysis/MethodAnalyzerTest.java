@@ -669,6 +669,114 @@ public class MethodAnalyzerTest implements IProbeIdGenerator {
 		assertLine(1004, 0, 1, 0, 0);
 	}
 
+	// === Scenario: try/catch/finally duplication ===
+
+	private void createPrintLn(String arg) {
+		method.visitLabel(new Label());
+		method.visitFieldInsn(Opcodes.GETSTATIC, "java/lang/System", "out",
+				"Ljava/io/PrintStream;");
+		method.visitLabel(new Label());
+		method.visitLdcInsn(arg);
+		method.visitLabel(new Label());
+		method.visitMethodInsn(Opcodes.INVOKEVIRTUAL, "java/io/PrintStream",
+				"println", "(Ljava/lang/String;)V");
+	}
+
+	private void createTryCatchFinallySequence() {
+
+		Label j1 = new Label();
+		Label j2 = new Label();
+
+		/* try { System.out.println("A") */
+		method.visitLineNumber(1001, new Label());
+		createPrintLn("A");
+		method.visitLabel(new Label());
+		method.visitJumpInsn(Opcodes.GOTO, j1);
+
+		/* } catch (Exception e) { */
+		method.visitLineNumber(1002, new Label());
+		method.visitLabel(new Label());
+		method.visitIntInsn(Opcodes.ASTORE, 1);
+
+		/* System.out.println("B") */
+		method.visitLineNumber(1003, new Label());
+		createPrintLn("B");
+
+		/* System.out.println("C") */
+		method.visitLineNumber(1005, new Label());
+		createPrintLn("C");
+		method.visitLabel(new Label());
+		method.visitJumpInsn(Opcodes.GOTO, j2);
+
+		/* } catch (Anything) { */
+		method.visitLineNumber(1004, new Label());
+		method.visitLabel(new Label());
+		method.visitIntInsn(Opcodes.ASTORE, 1);
+
+		/* System.out.println("C") */
+		method.visitLineNumber(1005, new Label());
+		createPrintLn("C");
+
+		/* Rethrow */
+		method.visitLineNumber(1006, new Label());
+		method.visitLabel(new Label());
+		method.visitIntInsn(Opcodes.ALOAD, 2);
+		method.visitLabel(new Label());
+		method.visitInsn(Opcodes.ATHROW);
+
+		/* System.out.println("C") */
+		method.visitLabel(j1);
+		method.visitLineNumber(1005, j1);
+		createPrintLn("C");
+
+		method.visitLabel(j2);
+		method.visitLineNumber(1007, j2);
+	}
+
+	@Test
+	public void testTryCatchFinallyUncovered() {
+		createTryCatchFinallySequence();
+		runMethodAnalzer();
+		assertEquals(3, nextProbeId);
+
+		assertLine(1001, 4, 0, 0, 0);
+		assertLine(1002, 1, 0, 0, 0);
+		assertLine(1003, 3, 0, 0, 0);
+		assertLine(1004, 1, 0, 0, 0);
+		assertLine(1005, 4, 0, 0, 0);
+		assertLine(1006, 2, 0, 0, 0);
+	}
+
+	@Test
+	public void testTryCatchFinallyFinallyCovered() {
+		createTryCatchFinallySequence();
+		probes[1] = true;
+		runMethodAnalzer();
+		assertEquals(3, nextProbeId);
+
+		assertLine(1001, 4, 0, 0, 0);
+		assertLine(1002, 1, 0, 0, 0);
+		assertLine(1003, 3, 0, 0, 0);
+		assertLine(1004, 0, 1, 0, 0);
+		assertLine(1005, 0, 4, 0, 0);
+		assertLine(1006, 0, 2, 0, 0);
+	}
+
+	@Test
+	public void testTryCatchFinallyExCovered() {
+		createTryCatchFinallySequence();
+		probes[0] = true;
+		runMethodAnalzer();
+		assertEquals(3, nextProbeId);
+
+		assertLine(1001, 4, 0, 0, 0);
+		assertLine(1002, 0, 1, 0, 0);
+		assertLine(1003, 0, 3, 0, 0);
+		assertLine(1004, 1, 0, 0, 0);
+		assertLine(1005, 0, 4, 0, 0);
+		assertLine(1006, 2, 0, 0, 0);
+	}
+
 	private void runMethodAnalzer() {
 		runMethodAnalzer(new ICoverageFilter.NoFilter());
 	}

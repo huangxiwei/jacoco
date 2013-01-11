@@ -65,11 +65,11 @@ public class MethodAnalyzer extends MethodProbesVisitor {
 	/** Last instruction in byte code sequence */
 	private Instruction lastInsn;
 
-	/** Map: LineNo: List of line duplicates: List of instructions */
-	private final Map<Integer, List<List<Instruction>>> lineInsDups = new TreeMap<Integer, List<List<Instruction>>>();
+	/** Map: LineNo: List of sequences */
+	private final Map<Integer, List<Sequence>> lineSequences = new TreeMap<Integer, List<Sequence>>();
 
 	/** Instructions on the current line */
-	private List<Instruction> currentLineIns = null;
+	private Sequence currentLineSeq = null;
 
 	/**
 	 * New Method analyzer for the given probe data.
@@ -118,14 +118,14 @@ public class MethodAnalyzer extends MethodProbesVisitor {
 	public void visitLineNumber(final int line, final Label start) {
 		currentLine = line;
 
-		List<List<Instruction>> lineInsDup = lineInsDups.get(Integer
+		List<Sequence> sequences = lineSequences.get(Integer
 				.valueOf(currentLine));
-		if (lineInsDup == null) {
-			lineInsDup = new ArrayList<List<Instruction>>();
-			lineInsDups.put(Integer.valueOf(currentLine), lineInsDup);
+		if (sequences == null) {
+			sequences = new ArrayList<Sequence>();
+			lineSequences.put(Integer.valueOf(currentLine), sequences);
 		}
 
-		currentLineIns = new ArrayList<Instruction>();
+		currentLineSeq = new Sequence();
 
 		if (firstLine > line || lastLine == ISourceNode.UNKNOWN_LINE) {
 			firstLine = line;
@@ -144,11 +144,11 @@ public class MethodAnalyzer extends MethodProbesVisitor {
 			insn.setPredecessor(lastInsn);
 		}
 
-		if (currentLineIns != null) {
-			currentLineIns.add(insn);
-			if (currentLineIns.size() == 1) {
-				lineInsDups.get(Integer.valueOf(currentLine)).add(
-						currentLineIns);
+		if (currentLineSeq != null) {
+			currentLineSeq.add(insn);
+			if (currentLineSeq.size() == 1) {
+				lineSequences.get(Integer.valueOf(currentLine)).add(
+						currentLineSeq);
 			}
 		}
 
@@ -303,27 +303,26 @@ public class MethodAnalyzer extends MethodProbesVisitor {
 		 * List of line clusters, Each line cluster is a list of line
 		 * duplicates, Each line duplicate is a list of instructions
 		 */
-		final Map<Integer, List<List<List<Instruction>>>> lineInsDupClustersMap = new TreeMap<Integer, List<List<List<Instruction>>>>();
-		for (final Entry<Integer, List<List<Instruction>>> lineInsDupEntry : lineInsDups
+		final Map<Integer, List<Cluster>> lineClusters = new TreeMap<Integer, List<Cluster>>();
+		for (final Entry<Integer, List<Sequence>> lineSequencesEntry : lineSequences
 				.entrySet()) {
-			if (lineInsDupEntry.getValue().size() > 1) {
-				final List<List<Instruction>> lineInsDup = lineInsDupEntry
-						.getValue();
-				final List<List<List<Instruction>>> allclusters = new ArrayList<List<List<Instruction>>>();
-				for (final List<Instruction> lineIns : lineInsDup) {
-					addToCluster(allclusters, lineIns);
+			if (lineSequencesEntry.getValue().size() > 1) {
+				final List<Sequence> sequences = lineSequencesEntry.getValue();
+				final List<Cluster> clusters = new ArrayList<Cluster>();
+				for (final Sequence sequence : sequences) {
+					addToExistingOrNewCluster(clusters, sequence);
 				}
 
-				final List<List<List<Instruction>>> clusters = new ArrayList<List<List<Instruction>>>();
-				for (final List<List<Instruction>> cluster : allclusters) {
+				final List<Cluster> clustersWithMoreThanOneItem = new ArrayList<Cluster>();
+				for (final Cluster cluster : clusters) {
 					if (cluster.size() > 1) {
-						clusters.add(cluster);
+						clustersWithMoreThanOneItem.add(cluster);
 					}
 				}
 
-				if (clusters.size() > 0) {
-					lineInsDupClustersMap.put(lineInsDupEntry.getKey(),
-							clusters);
+				if (clustersWithMoreThanOneItem.size() > 0) {
+					lineClusters.put(lineSequencesEntry.getKey(),
+							clustersWithMoreThanOneItem);
 				}
 			}
 		}
@@ -332,22 +331,15 @@ public class MethodAnalyzer extends MethodProbesVisitor {
 				coveredProbes);
 		for (final Instruction p : coveredProbesCopy) {
 			final Integer lineNumObj = Integer.valueOf(p.getLine());
-			final List<List<List<Instruction>>> clusters = lineInsDupClustersMap
-					.get(lineNumObj);
+			final List<Cluster> clusters = lineClusters.get(lineNumObj);
 			if (clusters != null) {
-				final List<List<Instruction>> cluster = findCluster(clusters, p);
+				final Cluster cluster = findClusterContainingInsn(clusters, p);
+
 				if (cluster != null) {
-					final int coveredIndex = findIndex(cluster, p);
-					if (coveredIndex > -1) {
-						for (final List<Instruction> lineIns : cluster) {
-							if (coveredIndex < lineIns.size()) {
-								final Instruction coveredProbe = lineIns
-										.get(coveredIndex);
-								if (!coveredProbes.contains(coveredProbe)) {
-									coveredProbes.add(coveredProbe);
-								}
-							}
-						}
+					final int sequenceIndex = cluster.findSequenceIndex(p);
+					if (sequenceIndex > -1) {
+						cluster.markSequenceIndexCovered(coveredProbes,
+								sequenceIndex);
 					}
 				}
 			}
@@ -364,32 +356,23 @@ public class MethodAnalyzer extends MethodProbesVisitor {
 			p.setDisabled();
 		}
 		// Propagate coverage into line duplicates:
-		for (final Entry<Integer, List<List<List<Instruction>>>> entry : lineInsDupClustersMap
+		for (final Entry<Integer, List<Cluster>> lineSequencesEntry : lineClusters
 				.entrySet()) {
-			final List<List<List<Instruction>>> clusters = entry.getValue();
-			for (final List<List<Instruction>> cluster : clusters) {
-				boolean seenCovered = false;
-				for (final List<Instruction> lineIns : cluster) {
-					if (lineIns.get(lineIns.size() - 1).getCoveredBranches() > 0) {
-						seenCovered = true;
+			final List<Cluster> clusters = lineSequencesEntry.getValue();
+			for (final Cluster cluster : clusters) {
+				final boolean coveredLastInsn = cluster
+						.containsSequenceWithCoveredLastInsn();
+
+				if (coveredLastInsn) {
+					final Sequence sequence = cluster.get(0);
+					final Instruction lastInsnInSequence = sequence
+							.get(sequence.size() - 1);
+					if (lastInsnInSequence.getCoveredBranches() == 0) {
+						lastInsnInSequence.setLineCovered();
 					}
 				}
-				if (seenCovered) {
-					final List<Instruction> lineIns = cluster.get(0);
-					final Instruction lastLineIns = lineIns
-							.get(lineIns.size() - 1);
-					if (lastLineIns.getCoveredBranches() == 0) {
-						lastLineIns.setLineCovered();
-					}
-				}
-				// Disable all but the first duplicate
-				for (int index = 1; index < cluster.size(); index++) {
-					for (final Instruction instruction : cluster.get(index)) {
-						if (instruction.isCoverageEnabled()) {
-							instruction.disable();
-						}
-					}
-				}
+
+				cluster.disableAllButOneSequence();
 			}
 		}
 		// Report result:
@@ -418,22 +401,11 @@ public class MethodAnalyzer extends MethodProbesVisitor {
 		coverage.incrementMethodCounter();
 	}
 
-	private int findIndex(final List<List<Instruction>> cluster,
+	private Cluster findClusterContainingInsn(final List<Cluster> clusters,
 			final Instruction p) {
-		for (final List<Instruction> lineIns : cluster) {
-			final int index = lineIns.indexOf(p);
-			if (index > -1) {
-				return index;
-			}
-		}
-		return -1;
-	}
-
-	private List<List<Instruction>> findCluster(
-			final List<List<List<Instruction>>> clusters, final Instruction p) {
-		for (final List<List<Instruction>> cluster : clusters) {
-			for (final List<Instruction> lineIns : cluster) {
-				if (lineIns.contains(p)) {
+		for (final Cluster cluster : clusters) {
+			for (final Sequence sequence : cluster) {
+				if (sequence.contains(p)) {
 					return cluster;
 				}
 			}
@@ -441,31 +413,34 @@ public class MethodAnalyzer extends MethodProbesVisitor {
 		return null;
 	}
 
-	private void addToCluster(final List<List<List<Instruction>>> clusters,
-			final List<Instruction> lineIns) {
-		for (final List<List<Instruction>> cluster : clusters) {
-			final List<Instruction> example = cluster.get(0);
+	private void addToExistingOrNewCluster(final List<Cluster> clusters,
+			final Sequence sequence) {
+		for (final Cluster cluster : clusters) {
+			final Sequence example = cluster.get(0);
 
-			// HACK: Ignore ASTORE instructions at the start of a line
-			int exampleOpCode = example.get(0).getOpcode();
-			if ((exampleOpCode == Opcodes.ASTORE) && (example.size() > 1)) {
-				exampleOpCode = example.get(1).getOpcode();
+			// NOTE: We ignore ASTORE instructions at the start of a line
+			// because the MethodSanitizer class shifts ASTORE instructions
+			// which are on their own line onto the next line.
+
+			int targetOpCode = example.get(0).getOpcode();
+			if ((targetOpCode == Opcodes.ASTORE) && (example.size() > 1)) {
+				targetOpCode = example.get(1).getOpcode();
 			}
 
-			// HACK: Ignore ASTORE instructions at the start of a line
-			int lineInsOpCode = lineIns.get(0).getOpcode();
-			if ((lineInsOpCode == Opcodes.ASTORE) && (lineIns.size() > 1)) {
-				lineInsOpCode = lineIns.get(1).getOpcode();
+			int sequenceOpCode = sequence.get(0).getOpcode();
+			if ((sequenceOpCode == Opcodes.ASTORE) && (sequence.size() > 1)) {
+				sequenceOpCode = sequence.get(1).getOpcode();
 			}
 
-			if (exampleOpCode == lineInsOpCode) {
-				cluster.add(lineIns);
+			if (targetOpCode == sequenceOpCode) {
+				cluster.add(sequence);
 				return;
 			}
 		}
 
-		final List<List<Instruction>> cluster = new ArrayList<List<Instruction>>();
-		cluster.add(lineIns);
+		final Cluster cluster = new Cluster();
+		cluster.add(sequence);
+
 		clusters.add(cluster);
 	}
 
@@ -491,6 +466,70 @@ public class MethodAnalyzer extends MethodProbesVisitor {
 			this.source = source;
 			this.target = target;
 		}
+	}
+
+	/**
+	 * List of instructions
+	 */
+	@SuppressWarnings("serial")
+	private static class Sequence extends ArrayList<Instruction> {
+	}
+
+	/**
+	 * Cluster of similar instruction sequences
+	 */
+	@SuppressWarnings("serial")
+	private static class Cluster extends ArrayList<Sequence> {
+
+		private int findSequenceIndex(final Instruction p) {
+			for (final Sequence sequence : this) {
+				final int index = sequence.indexOf(p);
+				if (index > -1) {
+					return index;
+				}
+			}
+			return -1;
+		}
+
+		private void markSequenceIndexCovered(
+				final List<Instruction> coveredProbes, int sequenceIndex) {
+			for (final Sequence sequence : this) {
+				if (sequence.get(0).getOpcode() == Opcodes.ASTORE) {
+					sequenceIndex++;
+				}
+
+				if (sequenceIndex < sequence.size()) {
+					final Instruction coveredProbe = sequence
+							.get(sequenceIndex);
+					if (!coveredProbes.contains(coveredProbe)) {
+						coveredProbes.add(coveredProbe);
+					}
+				}
+			}
+		}
+
+		private boolean containsSequenceWithCoveredLastInsn() {
+			boolean seenCovered = false;
+			for (final Sequence sequence : this) {
+				final Instruction lastInsnInSequence = sequence.get(sequence
+						.size() - 1);
+				if (lastInsnInSequence.getCoveredBranches() > 0) {
+					seenCovered = true;
+				}
+			}
+			return seenCovered;
+		}
+
+		private void disableAllButOneSequence() {
+			for (int index = 1; index < this.size(); index++) {
+				for (final Instruction instruction : this.get(index)) {
+					if (instruction.isCoverageEnabled()) {
+						instruction.disable();
+					}
+				}
+			}
+		}
+
 	}
 
 }
