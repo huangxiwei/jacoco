@@ -56,6 +56,12 @@ public class MethodAnalyzer extends MethodProbesVisitor {
 	/** List of all predecessors of covered probes */
 	private final List<Instruction> coveredProbes = new ArrayList<Instruction>();
 
+	/**
+	 * List of all predecessors of probes which have been marked covered during
+	 * finally block de-dup
+	 */
+	private final List<Instruction> copiedProbes = new ArrayList<Instruction>();
+
 	/** List of all predecessors of uncovered probes */
 	private final List<Instruction> uncoveredProbes = new ArrayList<Instruction>();
 
@@ -341,7 +347,7 @@ public class MethodAnalyzer extends MethodProbesVisitor {
 				if (cluster != null) {
 					final int sequenceIndex = cluster.findSequenceIndex(p);
 					if (sequenceIndex > -1) {
-						cluster.markSequenceIndexCovered(coveredProbes,
+						cluster.markSequenceIndexCovered(copiedProbes,
 								uncoveredProbes, sequenceIndex);
 					}
 				}
@@ -354,6 +360,9 @@ public class MethodAnalyzer extends MethodProbesVisitor {
 		// Propagate probe values:
 		for (final Instruction p : coveredProbes) {
 			p.setCovered();
+		}
+		for (final Instruction p : copiedProbes) {
+			p.setCovered(lineClusters);
 		}
 		for (final Instruction p : disabledProbes) {
 			p.setDisabled();
@@ -484,9 +493,10 @@ public class MethodAnalyzer extends MethodProbesVisitor {
 	 * Cluster of similar instruction sequences
 	 */
 	@SuppressWarnings("serial")
-	private static class Cluster extends ArrayList<Sequence> {
+	public static class Cluster extends ArrayList<Sequence> {
 
-		private int findSequenceIndex(final Instruction p) {
+		@SuppressWarnings("javadoc")
+		public int findSequenceIndex(final Instruction p) {
 			for (final Sequence sequence : this) {
 				final int index = sequence.indexOf(p);
 				if (index > -1) {
@@ -510,6 +520,7 @@ public class MethodAnalyzer extends MethodProbesVisitor {
 					if (!coveredProbes.contains(coveredProbe)
 							&& isCandidateProbe(uncoveredProbes, coveredProbe)) {
 						coveredProbes.add(coveredProbe);
+						coveredProbe.markCopiedProbeCoverage(this.size());
 					}
 				}
 			}

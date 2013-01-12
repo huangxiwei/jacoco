@@ -793,6 +793,153 @@ public class MethodAnalyzerTest implements IProbeIdGenerator {
 		assertLine(1006, 2, 0, 0, 0);
 	}
 
+	private void createTryCatchFinallyIfSequence() {
+
+		Label j1 = new Label();
+		Label j2 = new Label();
+
+		/* try { System.out.println("A") */
+		method.visitLineNumber(1001, new Label());
+		createPrintLn("A");
+		method.visitLabel(new Label());
+		method.visitJumpInsn(Opcodes.GOTO, j1);
+
+		/* } catch (Exception e) { */
+		method.visitLineNumber(1002, new Label());
+		method.visitLabel(new Label());
+		method.visitIntInsn(Opcodes.ASTORE, 1);
+
+		/* System.out.println("B") */
+		method.visitLineNumber(1003, new Label());
+		createPrintLn("B");
+
+		/*
+		 * if (value) { System.out.println("C") }
+		 */
+		method.visitLineNumber(1005, new Label());
+
+		method.visitLabel(new Label());
+		method.visitIntInsn(Opcodes.ILOAD, 1);
+		method.visitLabel(new Label());
+		method.visitJumpInsn(Opcodes.IFEQ, j2);
+
+		method.visitLineNumber(1006, new Label());
+		createPrintLn("C");
+		method.visitLabel(new Label());
+		method.visitJumpInsn(Opcodes.GOTO, j2);
+
+		/* } catch (Anything) { */
+		method.visitLineNumber(1004, new Label());
+		method.visitLabel(new Label());
+		method.visitIntInsn(Opcodes.ASTORE, 1);
+
+		/*
+		 * if (value) { System.out.println("C") }
+		 */
+		method.visitLineNumber(1005, new Label());
+
+		Label afterPrint1 = new Label();
+		method.visitLabel(new Label());
+		method.visitIntInsn(Opcodes.ILOAD, 1);
+		method.visitLabel(new Label());
+		method.visitJumpInsn(Opcodes.IFEQ, afterPrint1);
+
+		method.visitLineNumber(1006, new Label());
+		createPrintLn("C");
+
+		/* Rethrow */
+		method.visitLineNumber(1007, afterPrint1);
+		method.visitLabel(afterPrint1);
+		method.visitIntInsn(Opcodes.ALOAD, 2);
+		method.visitLabel(new Label());
+		method.visitInsn(Opcodes.ATHROW);
+
+		/*
+		 * if (value) { System.out.println("C") }
+		 */
+		method.visitLabel(j1);
+		method.visitLineNumber(1005, j1);
+
+		Label afterPrint2 = new Label();
+		method.visitLabel(new Label());
+		method.visitIntInsn(Opcodes.ILOAD, 1);
+		method.visitLabel(new Label());
+		method.visitJumpInsn(Opcodes.IFEQ, afterPrint2);
+
+		method.visitLineNumber(1006, new Label());
+		createPrintLn("C");
+
+		method.visitLabel(afterPrint2);
+		method.visitLabel(j2);
+		method.visitLineNumber(1008, j2);
+	}
+
+	@Test
+	public void testTryCatchFinallyIfUncovered() {
+		createTryCatchFinallyIfSequence();
+		runMethodAnalzer();
+
+		assertEquals(8, nextProbeId);
+
+		assertLine(1001, 4, 0, 0, 0);
+		assertLine(1002, 1, 0, 0, 0);
+		assertLine(1003, 3, 0, 0, 0);
+		assertLine(1004, 1, 0, 0, 0);
+		assertLine(1005, 2, 0, 2, 0);
+		assertLine(1006, 4, 0, 0, 0);
+		assertLine(1007, 2, 0, 0, 0);
+	}
+
+	@Test
+	public void testTryCatchFinallyIfExceptionBlockCovered() {
+		createTryCatchFinallyIfSequence();
+		probes[1] = true;
+		runMethodAnalzer();
+		assertEquals(8, nextProbeId);
+
+		assertLine(1001, 4, 0, 0, 0);
+		assertLine(1002, 0, 1, 0, 0);
+		assertLine(1003, 0, 3, 0, 0);
+		assertLine(1004, 1, 0, 0, 0);
+		assertLine(1005, 0, 2, 1, 1);
+		assertLine(1006, 0, 4, 0, 0);
+		assertLine(1007, 2, 0, 0, 0);
+	}
+
+	@Test
+	public void testTryCatchFinallyIfCatchAnyBlockCovered() {
+		createTryCatchFinallyIfSequence();
+		probes[2] = true;
+		probes[3] = true;
+		probes[4] = true;
+		runMethodAnalzer();
+		assertEquals(8, nextProbeId);
+
+		assertLine(1001, 4, 0, 0, 0);
+		assertLine(1002, 1, 0, 0, 0);
+		assertLine(1003, 3, 0, 0, 0);
+		assertLine(1004, 0, 1, 0, 0);
+		assertLine(1005, 0, 2, 1, 1);
+		assertLine(1006, 0, 4, 0, 0);
+		assertLine(1007, 0, 2, 0, 0);
+	}
+
+	@Test
+	public void testTryCatchFinallyIfNoExceptionBlockCovered() {
+		createTryCatchFinallyIfSequence();
+		probes[6] = true;
+		runMethodAnalzer();
+		assertEquals(8, nextProbeId);
+
+		assertLine(1001, 0, 4, 0, 0);
+		assertLine(1002, 1, 0, 0, 0);
+		assertLine(1003, 3, 0, 0, 0);
+		assertLine(1004, 1, 0, 0, 0);
+		assertLine(1005, 0, 2, 1, 1);
+		assertLine(1006, 0, 4, 0, 0);
+		assertLine(1007, 2, 0, 0, 0);
+	}
+
 	private void runMethodAnalzer() {
 		runMethodAnalzer(new ICoverageFilter.NoFilter());
 	}

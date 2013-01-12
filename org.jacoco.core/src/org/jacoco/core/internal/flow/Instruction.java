@@ -11,6 +11,11 @@
  *******************************************************************************/
 package org.jacoco.core.internal.flow;
 
+import java.util.List;
+import java.util.Map;
+
+import org.jacoco.core.internal.analysis.MethodAnalyzer.Cluster;
+
 /**
  * Representation of a byte code instruction for analysis. Internally used for
  * analysis.
@@ -28,6 +33,10 @@ public class Instruction {
 	private int coveredBranches;
 
 	private Instruction predecessor;
+
+	private int sourceProbeClusterSize = -1;
+
+	private boolean copiedProbeCoverage = false;
 
 	/**
 	 * New instruction at the given line.
@@ -74,9 +83,52 @@ public class Instruction {
 	 * branch.
 	 */
 	public void setCovered() {
+		setCovered(null);
+	}
+
+	/**
+	 * Marks one branch of this instruction as covered. Also recursively marks
+	 * all predecessor instructions as covered if this is the first covered
+	 * branch.
+	 * 
+	 * @param lineClusters
+	 */
+	public void setCovered(final Map<Integer, List<Cluster>> lineClusters) {
 		for (Instruction i = this; i != null && i.coveredBranches++ == 0;) {
 			i = i.predecessor;
+
+			if ((i != null) && (lineClusters != null) && (copiedProbeCoverage)) {
+				final Integer lineNum = Integer.valueOf(i.line);
+				final List<Cluster> clusters = lineClusters.get(lineNum);
+
+				if (clusters == null) {
+					break;
+				}
+
+				final Cluster cluster = findClusterContainingInsn(clusters, i);
+
+				if ((cluster == null)
+						|| (cluster.size() != sourceProbeClusterSize)) {
+					break;
+				}
+			}
 		}
+	}
+
+	/**
+	 * @param clusters
+	 * @param i
+	 * @return The Cluster which contains a sequence including i or null if none
+	 *         is found.
+	 */
+	private Cluster findClusterContainingInsn(final List<Cluster> clusters,
+			final Instruction i) {
+		for (final Cluster cluster : clusters) {
+			if (cluster.findSequenceIndex(i) > -1) {
+				return cluster;
+			}
+		}
+		return null;
 	}
 
 	/**
@@ -156,5 +208,15 @@ public class Instruction {
 	 */
 	public void disable() {
 		coverageEnabled = false;
+	}
+
+	/**
+	 * Mark this instruction as a copied probe.
+	 * 
+	 * @param clusterSize
+	 */
+	public void markCopiedProbeCoverage(final int clusterSize) {
+		this.copiedProbeCoverage = true;
+		this.sourceProbeClusterSize = clusterSize;
 	}
 }
