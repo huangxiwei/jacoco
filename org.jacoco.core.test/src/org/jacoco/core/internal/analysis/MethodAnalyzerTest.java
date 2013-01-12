@@ -737,6 +737,7 @@ public class MethodAnalyzerTest implements IProbeIdGenerator {
 	public void testTryCatchFinallyUncovered() {
 		createTryCatchFinallySequence();
 		runMethodAnalzer();
+
 		assertEquals(3, nextProbeId);
 
 		assertLine(1001, 4, 0, 0, 0);
@@ -748,7 +749,22 @@ public class MethodAnalyzerTest implements IProbeIdGenerator {
 	}
 
 	@Test
-	public void testTryCatchFinallyFinallyCovered() {
+	public void testTryCatchFinallyExceptionBlockCovered() {
+		createTryCatchFinallySequence();
+		probes[0] = true;
+		runMethodAnalzer();
+		assertEquals(3, nextProbeId);
+
+		assertLine(1001, 4, 0, 0, 0);
+		assertLine(1002, 0, 1, 0, 0);
+		assertLine(1003, 0, 3, 0, 0);
+		assertLine(1004, 1, 0, 0, 0);
+		assertLine(1005, 0, 4, 0, 0);
+		assertLine(1006, 2, 0, 0, 0);
+	}
+
+	@Test
+	public void testTryCatchFinallyCatchAnyBlockCovered() {
 		createTryCatchFinallySequence();
 		probes[1] = true;
 		runMethodAnalzer();
@@ -763,15 +779,15 @@ public class MethodAnalyzerTest implements IProbeIdGenerator {
 	}
 
 	@Test
-	public void testTryCatchFinallyExCovered() {
+	public void testTryCatchFinallyNoExceptionBlockCovered() {
 		createTryCatchFinallySequence();
-		probes[0] = true;
+		probes[2] = true;
 		runMethodAnalzer();
 		assertEquals(3, nextProbeId);
 
-		assertLine(1001, 4, 0, 0, 0);
-		assertLine(1002, 0, 1, 0, 0);
-		assertLine(1003, 0, 3, 0, 0);
+		assertLine(1001, 0, 4, 0, 0);
+		assertLine(1002, 1, 0, 0, 0);
+		assertLine(1003, 3, 0, 0, 0);
 		assertLine(1004, 1, 0, 0, 0);
 		assertLine(1005, 0, 4, 0, 0);
 		assertLine(1006, 2, 0, 0, 0);

@@ -13,10 +13,10 @@
 package org.jacoco.core.internal.analysis;
 
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
-import java.util.TreeMap;
 
 import org.jacoco.core.analysis.ICounter;
 import org.jacoco.core.analysis.IMethodCoverage;
@@ -56,6 +56,9 @@ public class MethodAnalyzer extends MethodProbesVisitor {
 	/** List of all predecessors of covered probes */
 	private final List<Instruction> coveredProbes = new ArrayList<Instruction>();
 
+	/** List of all predecessors of uncovered probes */
+	private final List<Instruction> uncoveredProbes = new ArrayList<Instruction>();
+
 	/** List of all predecessors of disabled probes */
 	private final List<Instruction> disabledProbes = new ArrayList<Instruction>();
 
@@ -66,7 +69,7 @@ public class MethodAnalyzer extends MethodProbesVisitor {
 	private Instruction lastInsn;
 
 	/** Map: LineNo: List of sequences */
-	private final Map<Integer, List<Sequence>> lineSequences = new TreeMap<Integer, List<Sequence>>();
+	private final Map<Integer, List<Sequence>> lineSequences = new HashMap<Integer, List<Sequence>>();
 
 	/** Instructions on the current line */
 	private Sequence currentLineSeq = null;
@@ -303,7 +306,7 @@ public class MethodAnalyzer extends MethodProbesVisitor {
 		 * List of line clusters, Each line cluster is a list of line
 		 * duplicates, Each line duplicate is a list of instructions
 		 */
-		final Map<Integer, List<Cluster>> lineClusters = new TreeMap<Integer, List<Cluster>>();
+		final Map<Integer, List<Cluster>> lineClusters = new HashMap<Integer, List<Cluster>>();
 		for (final Entry<Integer, List<Sequence>> lineSequencesEntry : lineSequences
 				.entrySet()) {
 			if (lineSequencesEntry.getValue().size() > 1) {
@@ -339,7 +342,7 @@ public class MethodAnalyzer extends MethodProbesVisitor {
 					final int sequenceIndex = cluster.findSequenceIndex(p);
 					if (sequenceIndex > -1) {
 						cluster.markSequenceIndexCovered(coveredProbes,
-								sequenceIndex);
+								uncoveredProbes, sequenceIndex);
 					}
 				}
 			}
@@ -449,6 +452,8 @@ public class MethodAnalyzer extends MethodProbesVisitor {
 			lastInsn.addBranch();
 			if (probes != null && probes[probeId]) {
 				coveredProbes.add(lastInsn);
+			} else {
+				uncoveredProbes.add(lastInsn);
 			}
 
 			if (!lastInsn.isCoverageEnabled()) {
@@ -492,7 +497,8 @@ public class MethodAnalyzer extends MethodProbesVisitor {
 		}
 
 		private void markSequenceIndexCovered(
-				final List<Instruction> coveredProbes, int sequenceIndex) {
+				final List<Instruction> coveredProbes,
+				final List<Instruction> uncoveredProbes, int sequenceIndex) {
 			for (final Sequence sequence : this) {
 				if (sequence.get(0).getOpcode() == Opcodes.ASTORE) {
 					sequenceIndex++;
@@ -501,11 +507,18 @@ public class MethodAnalyzer extends MethodProbesVisitor {
 				if (sequenceIndex < sequence.size()) {
 					final Instruction coveredProbe = sequence
 							.get(sequenceIndex);
-					if (!coveredProbes.contains(coveredProbe)) {
+					if (!coveredProbes.contains(coveredProbe)
+							&& isCandidateProbe(uncoveredProbes, coveredProbe)) {
 						coveredProbes.add(coveredProbe);
 					}
 				}
 			}
+		}
+
+		private boolean isCandidateProbe(
+				final List<Instruction> uncoveredProbes,
+				final Instruction coveredProbe) {
+			return uncoveredProbes.contains(coveredProbe);
 		}
 
 		private boolean containsSequenceWithCoveredLastInsn() {
