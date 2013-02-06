@@ -672,65 +672,75 @@ public class MethodAnalyzerTest implements IProbeIdGenerator {
 	// === Scenario: try/catch/finally duplication ===
 
 	private void createPrintLn(String arg) {
-		method.visitLabel(new Label());
 		method.visitFieldInsn(Opcodes.GETSTATIC, "java/lang/System", "out",
 				"Ljava/io/PrintStream;");
-		method.visitLabel(new Label());
 		method.visitLdcInsn(arg);
-		method.visitLabel(new Label());
 		method.visitMethodInsn(Opcodes.INVOKEVIRTUAL, "java/io/PrintStream",
 				"println", "(Ljava/lang/String;)V");
 	}
 
 	private void createTryCatchFinallySequence() {
 
-		Label j1 = new Label();
-		Label j2 = new Label();
+		Label L00 = new Label();
+		Label L01 = new Label();
+		Label L02 = new Label();
+		Label L03 = new Label();
+		Label L04 = new Label();
+		Label L05 = new Label();
+		Label L06 = new Label();
+		Label L07 = new Label();
+		Label L08 = new Label();
+		Label L09 = new Label();
+
+		method.visitTryCatchBlock(L00, L01, L02, "java/lang/RuntimeException");
+		method.visitTryCatchBlock(L00, L03, L04, null);
 
 		/* try { System.out.println("A") */
-		method.visitLineNumber(1001, new Label());
+		method.visitLabel(L00);
+		method.visitLineNumber(1001, L00);
 		createPrintLn("A");
-		method.visitLabel(new Label());
-		method.visitJumpInsn(Opcodes.GOTO, j1);
+		method.visitLabel(L01);
+		method.visitJumpInsn(Opcodes.GOTO, L05);
 
 		/* } catch (Exception e) { */
-		method.visitLineNumber(1002, new Label());
-		method.visitLabel(new Label());
+		method.visitLabel(L02);
+		method.visitLineNumber(1002, L02);
 		method.visitIntInsn(Opcodes.ASTORE, 1);
 
 		/* System.out.println("B") */
-		method.visitLineNumber(1003, new Label());
+		method.visitLabel(L06);
+		method.visitLineNumber(1003, L06);
 		createPrintLn("B");
 
 		/* System.out.println("C") */
-		method.visitLineNumber(1005, new Label());
+		method.visitLabel(L03);
+		method.visitLineNumber(1005, L03);
 		createPrintLn("C");
-		method.visitLabel(new Label());
-		method.visitJumpInsn(Opcodes.GOTO, j2);
+		method.visitJumpInsn(Opcodes.GOTO, L07);
 
 		/* } catch (Anything) { */
-		method.visitLineNumber(1004, new Label());
-		method.visitLabel(new Label());
+		method.visitLabel(L04);
+		method.visitLineNumber(1004, L04);
 		method.visitIntInsn(Opcodes.ASTORE, 1);
 
 		/* System.out.println("C") */
-		method.visitLineNumber(1005, new Label());
+		method.visitLabel(L08);
+		method.visitLineNumber(1005, L08);
 		createPrintLn("C");
 
 		/* Rethrow */
-		method.visitLineNumber(1006, new Label());
-		method.visitLabel(new Label());
+		method.visitLabel(L09);
+		method.visitLineNumber(1006, L09);
 		method.visitIntInsn(Opcodes.ALOAD, 2);
-		method.visitLabel(new Label());
 		method.visitInsn(Opcodes.ATHROW);
 
 		/* System.out.println("C") */
-		method.visitLabel(j1);
-		method.visitLineNumber(1005, j1);
+		method.visitLabel(L05);
+		method.visitLineNumber(1005, L05);
 		createPrintLn("C");
 
-		method.visitLabel(j2);
-		method.visitLineNumber(1007, j2);
+		method.visitLabel(L07);
+		method.visitLineNumber(1007, L07);
 	}
 
 	@Test
@@ -744,7 +754,7 @@ public class MethodAnalyzerTest implements IProbeIdGenerator {
 		assertLine(1002, 1, 0, 0, 0);
 		assertLine(1003, 3, 0, 0, 0);
 		assertLine(1004, 1, 0, 0, 0);
-		assertLine(1005, 4, 0, 0, 0);
+		assertLine(1005, 3, 0, 0, 0);
 		assertLine(1006, 2, 0, 0, 0);
 	}
 
@@ -758,9 +768,9 @@ public class MethodAnalyzerTest implements IProbeIdGenerator {
 		assertLine(1001, 4, 0, 0, 0);
 		assertLine(1002, 0, 1, 0, 0);
 		assertLine(1003, 0, 3, 0, 0);
-		assertLine(1004, 1, 0, 0, 0);
-		assertLine(1005, 0, 4, 0, 0);
-		assertLine(1006, 2, 0, 0, 0);
+		assertLine(1004, 0, 1, 0, 0);
+		assertLine(1005, 0, 3, 0, 0);
+		assertLine(1006, 0, 2, 0, 0);
 	}
 
 	@Test
@@ -774,7 +784,7 @@ public class MethodAnalyzerTest implements IProbeIdGenerator {
 		assertLine(1002, 1, 0, 0, 0);
 		assertLine(1003, 3, 0, 0, 0);
 		assertLine(1004, 0, 1, 0, 0);
-		assertLine(1005, 0, 4, 0, 0);
+		assertLine(1005, 0, 3, 0, 0);
 		assertLine(1006, 0, 2, 0, 0);
 	}
 
@@ -788,90 +798,111 @@ public class MethodAnalyzerTest implements IProbeIdGenerator {
 		assertLine(1001, 0, 4, 0, 0);
 		assertLine(1002, 1, 0, 0, 0);
 		assertLine(1003, 3, 0, 0, 0);
-		assertLine(1004, 1, 0, 0, 0);
-		assertLine(1005, 0, 4, 0, 0);
-		assertLine(1006, 2, 0, 0, 0);
+		assertLine(1004, 0, 1, 0, 0);
+		assertLine(1005, 0, 3, 0, 0);
+		assertLine(1006, 0, 2, 0, 0);
 	}
 
 	private void createTryCatchFinallyIfSequence() {
 
-		Label j1 = new Label();
-		Label j2 = new Label();
+		Label L00 = new Label();
+		Label L01 = new Label();
+		Label L02 = new Label();
+		Label L03 = new Label();
+		Label L04 = new Label();
+		Label L05 = new Label();
+		Label L06 = new Label();
+		Label L07 = new Label();
+		Label L08 = new Label();
+		Label L09 = new Label();
+		Label L10 = new Label();
+		Label L11 = new Label();
+		Label L12 = new Label();
+		Label L13 = new Label();
+
+		method.visitTryCatchBlock(L00, L01, L02, "java/lang/RuntimeException");
+		method.visitTryCatchBlock(L00, L03, L04, null);
 
 		/* try { System.out.println("A") */
-		method.visitLineNumber(1001, new Label());
+		method.visitLabel(L00);
+		method.visitLineNumber(1001, L00);
 		createPrintLn("A");
-		method.visitLabel(new Label());
-		method.visitJumpInsn(Opcodes.GOTO, j1);
+		method.visitLabel(L01);
+		method.visitJumpInsn(Opcodes.GOTO, L05);
 
 		/* } catch (Exception e) { */
-		method.visitLineNumber(1002, new Label());
-		method.visitLabel(new Label());
+		method.visitLabel(L02);
+		method.visitLineNumber(1002, L02);
 		method.visitIntInsn(Opcodes.ASTORE, 1);
 
 		/* System.out.println("B") */
-		method.visitLineNumber(1003, new Label());
+		method.visitLabel(L06);
+		method.visitLineNumber(1003, L06);
 		createPrintLn("B");
 
 		/*
 		 * if (value) { System.out.println("C") }
 		 */
-		method.visitLineNumber(1005, new Label());
-
-		method.visitLabel(new Label());
+		method.visitLabel(L03);
+		method.visitLineNumber(1005, L03);
 		method.visitIntInsn(Opcodes.ILOAD, 1);
-		method.visitLabel(new Label());
-		method.visitJumpInsn(Opcodes.IFEQ, j2);
+		// probe[0]
+		method.visitJumpInsn(Opcodes.IFEQ, L07);
 
-		method.visitLineNumber(1006, new Label());
+		/* System.out.println("C") */
+		method.visitLabel(L08);
+		method.visitLineNumber(1006, L08);
 		createPrintLn("C");
-		method.visitLabel(new Label());
-		method.visitJumpInsn(Opcodes.GOTO, j2);
+		// probe[1]
+
+		method.visitLabel(L09);
+		method.visitJumpInsn(Opcodes.GOTO, L07);
 
 		/* } catch (Anything) { */
-		method.visitLineNumber(1004, new Label());
-		method.visitLabel(new Label());
+		method.visitLabel(L04);
+		method.visitLineNumber(1004, L04);
 		method.visitIntInsn(Opcodes.ASTORE, 1);
 
 		/*
 		 * if (value) { System.out.println("C") }
 		 */
-		method.visitLineNumber(1005, new Label());
-
-		Label afterPrint1 = new Label();
-		method.visitLabel(new Label());
+		method.visitLabel(L10);
+		method.visitLineNumber(1005, L10);
 		method.visitIntInsn(Opcodes.ILOAD, 1);
-		method.visitLabel(new Label());
-		method.visitJumpInsn(Opcodes.IFEQ, afterPrint1);
+		// probe[2]
+		method.visitJumpInsn(Opcodes.IFEQ, L11);
 
-		method.visitLineNumber(1006, new Label());
+		/* System.out.println("C") */
+		method.visitLabel(L12);
+		method.visitLineNumber(1006, L12);
 		createPrintLn("C");
+		// probe[3]
 
 		/* Rethrow */
-		method.visitLineNumber(1007, afterPrint1);
-		method.visitLabel(afterPrint1);
+		method.visitLabel(L11);
+		method.visitLineNumber(1007, L11);
 		method.visitIntInsn(Opcodes.ALOAD, 2);
-		method.visitLabel(new Label());
+		// probe[4]
 		method.visitInsn(Opcodes.ATHROW);
 
 		/*
 		 * if (value) { System.out.println("C") }
 		 */
-		method.visitLabel(j1);
-		method.visitLineNumber(1005, j1);
-
-		Label afterPrint2 = new Label();
-		method.visitLabel(new Label());
+		method.visitLabel(L05);
+		method.visitLineNumber(1005, L05);
 		method.visitIntInsn(Opcodes.ILOAD, 1);
-		method.visitLabel(new Label());
-		method.visitJumpInsn(Opcodes.IFEQ, afterPrint2);
+		// probe[5]
+		method.visitJumpInsn(Opcodes.IFEQ, L07);
 
-		method.visitLineNumber(1006, new Label());
+		/* System.out.println("C") */
+		method.visitLabel(L13);
+		method.visitLineNumber(1006, L13);
 		createPrintLn("C");
+		// probe[6]
 
-		method.visitLabel(afterPrint2);
-		method.visitLabel(j2);
-		method.visitLineNumber(1008, j2);
+		method.visitLabel(L07);
+		method.visitLineNumber(1008, L07);
+		// probe[7]
 	}
 
 	@Test
@@ -879,14 +910,14 @@ public class MethodAnalyzerTest implements IProbeIdGenerator {
 		createTryCatchFinallyIfSequence();
 		runMethodAnalzer();
 
-		assertEquals(8, nextProbeId);
+		assertEquals(7, nextProbeId);
 
 		assertLine(1001, 4, 0, 0, 0);
 		assertLine(1002, 1, 0, 0, 0);
 		assertLine(1003, 3, 0, 0, 0);
 		assertLine(1004, 1, 0, 0, 0);
 		assertLine(1005, 2, 0, 2, 0);
-		assertLine(1006, 4, 0, 0, 0);
+		assertLine(1006, 3, 0, 0, 0);
 		assertLine(1007, 2, 0, 0, 0);
 	}
 
@@ -895,15 +926,15 @@ public class MethodAnalyzerTest implements IProbeIdGenerator {
 		createTryCatchFinallyIfSequence();
 		probes[1] = true;
 		runMethodAnalzer();
-		assertEquals(8, nextProbeId);
+		assertEquals(7, nextProbeId);
 
 		assertLine(1001, 4, 0, 0, 0);
 		assertLine(1002, 0, 1, 0, 0);
 		assertLine(1003, 0, 3, 0, 0);
-		assertLine(1004, 1, 0, 0, 0);
+		assertLine(1004, 0, 1, 0, 0);
 		assertLine(1005, 0, 2, 1, 1);
-		assertLine(1006, 0, 4, 0, 0);
-		assertLine(1007, 2, 0, 0, 0);
+		assertLine(1006, 0, 3, 0, 0);
+		assertLine(1007, 0, 2, 0, 0);
 	}
 
 	@Test
@@ -913,14 +944,14 @@ public class MethodAnalyzerTest implements IProbeIdGenerator {
 		probes[3] = true;
 		probes[4] = true;
 		runMethodAnalzer();
-		assertEquals(8, nextProbeId);
+		assertEquals(7, nextProbeId);
 
 		assertLine(1001, 4, 0, 0, 0);
 		assertLine(1002, 1, 0, 0, 0);
 		assertLine(1003, 3, 0, 0, 0);
 		assertLine(1004, 0, 1, 0, 0);
-		assertLine(1005, 0, 2, 1, 1);
-		assertLine(1006, 0, 4, 0, 0);
+		assertLine(1005, 0, 2, 0, 2);
+		assertLine(1006, 0, 3, 0, 0);
 		assertLine(1007, 0, 2, 0, 0);
 	}
 
@@ -929,15 +960,15 @@ public class MethodAnalyzerTest implements IProbeIdGenerator {
 		createTryCatchFinallyIfSequence();
 		probes[6] = true;
 		runMethodAnalzer();
-		assertEquals(8, nextProbeId);
+		assertEquals(7, nextProbeId);
 
 		assertLine(1001, 0, 4, 0, 0);
 		assertLine(1002, 1, 0, 0, 0);
 		assertLine(1003, 3, 0, 0, 0);
-		assertLine(1004, 1, 0, 0, 0);
+		assertLine(1004, 0, 1, 0, 0);
 		assertLine(1005, 0, 2, 1, 1);
-		assertLine(1006, 0, 4, 0, 0);
-		assertLine(1007, 2, 0, 0, 0);
+		assertLine(1006, 0, 3, 0, 0);
+		assertLine(1007, 0, 2, 0, 0);
 	}
 
 	private void runMethodAnalzer() {
