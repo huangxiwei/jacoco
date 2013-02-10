@@ -862,6 +862,75 @@ public class MethodAnalyzer extends MethodProbesVisitor {
 	}
 
 	private Map<TryBlockStart, List<Label>> computeFinallyBlockStartLabelsGroups() {
+		// @formatter:off
+		/*
+		There are two try/catch block layouts which are used:
+		
+		1) no-exception block at the end:
+		
+		0.{
+		1.{
+		2.{
+		  A()
+		  goto NoEx
+		1.} catch (Ex1) => Ex1:
+		2.} catch (Ex1) => Ex2:
+		Ex1.{
+		  doEx1()
+		0.} catch (Anything) => Anything:
+		  doFinally()
+		  goto AfterTry
+		}
+		Ex2.{
+		3. {
+		  doEx1()
+		3.} catch (Anything) => Anything:
+		  doFinally()
+		  goto AfterTry
+		}
+		Anything.{
+			doFinally()
+			rethrow ex;
+		}
+		NoEx.{
+			doFinally()
+		}
+		AfterTry:
+		
+		2) no-exception block without jump:
+			
+		0.{
+		1.{
+		2.{
+		  A()
+		0.} catch (Anything) =	> Anything:
+		1.} catch (Ex1) => Ex1:
+		2.} catch (Ex1) => Ex2:
+		  doFinally()
+		  goto AfterTry
+		Ex1.{
+		3. {
+		  doEx1()
+		3.} catch (Anything) => Anything:
+		  doFinally()
+		  goto AfterTry
+		}
+		Ex2.{
+		4. {
+		  doEx1()
+		4.} catch (Anything) => Anything:
+		  doFinally()
+		  goto AfterTry
+		}
+		Anything.{
+			doFinally()
+			rethrow ex;
+		}
+		AfterTry:
+		 */
+		
+		// @formatter:on
+
 		// finally block duplicates:
 		// - 1x finally block handler
 		// - nx catch block finally handlers
@@ -875,11 +944,13 @@ public class MethodAnalyzer extends MethodProbesVisitor {
 
 			boolean seenFinally = false;
 			boolean seenCatch = false;
+			Label catchEnd = null;
 			for (final TryBlock tryBlock : tryBlockGroupEntry.getValue()) {
 				if (tryBlock.handlerType == null) {
 					seenFinally = true;
 				} else {
 					seenCatch = true;
+					catchEnd = tryBlock.end;
 				}
 			}
 
@@ -901,7 +972,8 @@ public class MethodAnalyzer extends MethodProbesVisitor {
 			// - nx catch block finally handlers
 			if (seenCatch) {
 				for (final TryBlock tryBlock : tryBlockGroupEntry.getValue()) {
-					if (tryBlock.handlerType == null) {
+					if ((tryBlock.handlerType == null)
+							&& (tryBlock.end != catchEnd)) {
 						final Label finallyBlock = tryBlock.end;
 
 						final int finallyBlockIndex = methodAtoms
