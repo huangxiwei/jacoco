@@ -492,6 +492,11 @@ public class MethodAnalyzer extends MethodProbesVisitor {
 			System.out.println("Starting pointers: "
 					+ Arrays.toString(finallyBlockPointers));
 
+			if ((finallyBlockPointers.length == 2)
+					&& (finallyBlockPointers[0] == finallyBlockPointers[1])) {
+				continue;
+			}
+
 			// Initialize finally block end insn ponters array
 			final int[] finallyBlockEndInsnPointers = new int[finallyBlockPointers.length];
 			for (int ii = 0; ii < finallyBlockEndInsnPointers.length; ii++) {
@@ -533,7 +538,7 @@ public class MethodAnalyzer extends MethodProbesVisitor {
 				// Increment all pointers
 				for (int ii = 0; ii < finallyBlockPointers.length; ii++) {
 					finallyBlockPointers[ii]++;
-					if ((finallyBlockPointers[ii] > methodAtoms.size())
+					if ((finallyBlockPointers[ii] >= methodAtoms.size())
 							|| (finallyBlockPointers[ii] < 0)) {
 						break scanningLoop;
 					}
@@ -588,7 +593,12 @@ public class MethodAnalyzer extends MethodProbesVisitor {
 						+ Arrays.toString(finallyBlockEndInsnPointers));
 
 				// Seek to the final instructions
-				finallyBlockEndInsnPointers[0] += 4;
+				for (int ii = 3; ii <= 4; ii++) {
+					if (isInsnAtom(finallyBlockEndInsnPointers[0] + ii)) {
+						finallyBlockEndInsnPointers[0] += ii;
+						break;
+					}
+				}
 				for (int ii = 1; ii < (finallyBlockEndInsnPointers.length - 1); ii++) {
 					finallyBlockEndInsnPointers[ii] += 2;
 				}
@@ -916,7 +926,7 @@ public class MethodAnalyzer extends MethodProbesVisitor {
 			// - 1x no-exception handler
 			final TryBlock firstCatchBlock = tryBlockGroupEntry.getValue().get(
 					0);
-			final Label firstTryBlockEnd = firstCatchBlock.end;
+			Label firstTryBlockEnd = firstCatchBlock.end;
 			final int firstTryBlockEndIndex = methodAtoms
 					.indexOf(new MethodAtom(firstTryBlockEnd));
 
@@ -931,25 +941,30 @@ public class MethodAnalyzer extends MethodProbesVisitor {
 				}
 			}
 
-			boolean seenThrow = false;
+			boolean seenGoto = false;
 			Instruction firstInstrAfterTryBlockEnd = null;
 			for (int ii = -1; ii <= 3; ii++) {
-				if (isInsnAtom(firstTryBlockEndIndex + ii)) {
+				if (isLabelAtom(firstTryBlockEndIndex + ii)) {
+					firstTryBlockEnd = methodAtoms.get(firstTryBlockEndIndex
+							+ ii).label;
+				} else if (isInsnAtom(firstTryBlockEndIndex + ii)) {
 					final int insnOpcode = methodAtoms
 							.get(firstTryBlockEndIndex + ii).instruction
 							.getOpcode();
+					firstInstrAfterTryBlockEnd = methodAtoms
+							.get(firstTryBlockEndIndex + ii).instruction;
 					if (insnOpcode == Opcodes.GOTO) {
-						firstInstrAfterTryBlockEnd = methodAtoms
-								.get(firstTryBlockEndIndex + ii).instruction;
+						seenGoto = true;
 						break;
-					} else if (insnOpcode == Opcodes.ATHROW) {
-						seenThrow = true;
+					}
+
+					if (ii >= 0) {
 						break;
 					}
 				}
 			}
 
-			if (!seenThrow) {
+			if (seenGoto) {
 				boolean checkProbeJumps = true;
 				for (final Jump jump : jumps) {
 					if (jump.source == firstInstrAfterTryBlockEnd) {
@@ -966,6 +981,8 @@ public class MethodAnalyzer extends MethodProbesVisitor {
 						}
 					}
 				}
+			} else {
+				finallyBlockStartLabelsGroup.add(firstTryBlockEnd);
 			}
 
 			if (finallyBlockStartLabelsGroup.size() > 1) {

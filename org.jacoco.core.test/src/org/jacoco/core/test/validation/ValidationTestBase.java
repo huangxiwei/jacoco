@@ -127,8 +127,12 @@ public abstract class ValidationTestBase {
 	protected void assertLine(final String tag, final int status) {
 		final int nr = source.getLineNumber(tag);
 		final ILine line = sourceCoverage.getLine(nr);
-		final String msg = String.format("Status in line %s: %s",
-				Integer.valueOf(nr), source.getLine(nr));
+		@SuppressWarnings("boxing")
+		final String msg = String.format(
+				"Status in line %s: %s, Insn missed: %d, covered: %d", Integer
+						.valueOf(nr), source.getLine(nr), line
+						.getInstructionCounter().getMissedCount(), line
+						.getInstructionCounter().getCoveredCount());
 		final int insnStatus = line.getInstructionCounter().getStatus();
 		assertEquals(msg, STATUS_NAME[status], STATUS_NAME[insnStatus]);
 	}
