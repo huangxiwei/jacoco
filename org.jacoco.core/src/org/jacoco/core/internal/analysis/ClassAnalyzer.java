@@ -65,6 +65,7 @@ public class ClassAnalyzer extends ClassProbesVisitor {
 	public void visit(final int version, final int access, final String name,
 			final String signature, final String superName,
 			final String[] interfaces) {
+		System.out.println("# Coverage of class: " + name);
 		this.coverage = new ClassCoverageImpl(stringPool.get(name), classid,
 				stringPool.get(signature), stringPool.get(superName),
 				stringPool.get(interfaces));

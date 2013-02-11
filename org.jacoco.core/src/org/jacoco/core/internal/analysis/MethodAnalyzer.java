@@ -62,108 +62,25 @@ public class MethodAnalyzer extends MethodProbesVisitor {
 	/** List of all predecessors of disabled probes */
 	private final List<Instruction> disabledProbes = new ArrayList<Instruction>();
 
-	/** List of all jumps encountered */
+	/**
+	 * List of all jumps encountered.
+	 */
 	private final List<Jump> jumps = new ArrayList<Jump>();
-	private final List<Jump> probeJumps = new ArrayList<Jump>();
+
+	/** List of all jumps (including those with probes) encountered */
+	private final List<Jump> allJumps = new ArrayList<Jump>();
 
 	/** Last instruction in byte code sequence */
 	private Instruction lastInsn;
 
-	private static class TryBlockStart {
-		private final Label label;
-
-		@Override
-		public int hashCode() {
-			return label.hashCode();
-		}
-
-		@Override
-		public boolean equals(final Object obj) {
-			if (obj instanceof TryBlockStart) {
-				return label.equals(((TryBlockStart) obj).label);
-			}
-			return false;
-		}
-
-		public TryBlockStart(final Label start) {
-			this.label = start;
-		}
-	}
-
-	private static class TryBlock {
-		private final Label start;
-		private final Label end;
-		private final Label handler;
-		private final String handlerType;
-
-		public TryBlock(final Label start, final Label end,
-				final Label handler, final String handlerType) {
-			this.start = start;
-			this.end = end;
-			this.handler = handler;
-			this.handlerType = handlerType;
-		}
-
-		@Override
-		public int hashCode() {
-			final int prime = 31;
-			int result = 1;
-			result = prime * result + ((end == null) ? 0 : end.hashCode());
-			result = prime * result
-					+ ((handler == null) ? 0 : handler.hashCode());
-			result = prime * result
-					+ ((handlerType == null) ? 0 : handlerType.hashCode());
-			result = prime * result + ((start == null) ? 0 : start.hashCode());
-			return result;
-		}
-
-		@Override
-		public boolean equals(final Object obj) {
-			if (this == obj) {
-				return true;
-			}
-			if (obj == null) {
-				return false;
-			}
-			if (!(obj instanceof TryBlock)) {
-				return false;
-			}
-			final TryBlock other = (TryBlock) obj;
-			if (end == null) {
-				if (other.end != null) {
-					return false;
-				}
-			} else if (!end.equals(other.end)) {
-				return false;
-			}
-			if (handler == null) {
-				if (other.handler != null) {
-					return false;
-				}
-			} else if (!handler.equals(other.handler)) {
-				return false;
-			}
-			if (handlerType == null) {
-				if (other.handlerType != null) {
-					return false;
-				}
-			} else if (!handlerType.equals(other.handlerType)) {
-				return false;
-			}
-			if (start == null) {
-				if (other.start != null) {
-					return false;
-				}
-			} else if (!start.equals(other.start)) {
-				return false;
-			}
-			return true;
-		}
-	}
-
-	private final Map<TryBlockStart, List<TryBlock>> tryBlockGroups = new LinkedHashMap<TryBlockStart, List<TryBlock>>();
-	private final Map<Label, TryBlockStart> finallyBlockTryBlockStart = new HashMap<Label, TryBlockStart>();
-
+	/**
+	 * An "atom" of a method. One of:
+	 * <ul>
+	 * <li>Label
+	 * <li>Instruction
+	 * <li>Probe
+	 * </ul>
+	 */
 	private static class MethodAtom {
 		private final Label label;
 		private final Instruction instruction;
@@ -216,35 +133,8 @@ public class MethodAnalyzer extends MethodProbesVisitor {
 		}
 	}
 
-	private final Map<Integer, Instruction> probeInsns = new HashMap<Integer, Instruction>();
+	private final Map<Integer, Instruction> probeIndexToInstructionPriorToProbe = new HashMap<Integer, Instruction>();
 	private final List<MethodAtom> methodAtoms = new ArrayList<MethodAtom>();
-
-	@Override
-	public void visitTryCatchBlock(final Label start, final Label end,
-			final Label handler, final String type) {
-		if (start == handler) {
-			// Ignore
-		} else {
-			TryBlockStart blockStart;
-			if (type == null) {
-				if (!finallyBlockTryBlockStart.containsKey(handler)) {
-					finallyBlockTryBlockStart.put(handler, new TryBlockStart(
-							start));
-				}
-				blockStart = finallyBlockTryBlockStart.get(handler);
-			} else {
-				blockStart = new TryBlockStart(start);
-			}
-
-			if (!tryBlockGroups.containsKey(blockStart)) {
-				tryBlockGroups.put(blockStart, new ArrayList<TryBlock>());
-			}
-			final List<TryBlock> catchBlocks = tryBlockGroups.get(blockStart);
-			catchBlocks.add(new TryBlock(start, end, handler, type));
-		}
-
-		super.visitTryCatchBlock(start, end, handler, type);
-	}
 
 	/**
 	 * New Method analyzer for the given probe data.
@@ -279,6 +169,149 @@ public class MethodAnalyzer extends MethodProbesVisitor {
 	 */
 	public IMethodCoverage getCoverage() {
 		return coverage;
+	}
+
+	private static class TryCatchBlock {
+		private final Label start;
+		private final Label end;
+		private final Label handler;
+		private final String catchType;
+
+		public TryCatchBlock(final Label start, final Label end,
+				final String catchType, final Label handler) {
+			this.start = start;
+			this.end = end;
+			this.catchType = catchType;
+			this.handler = handler;
+		}
+
+		@Override
+		public int hashCode() {
+			final int prime = 31;
+			int result = 1;
+			result = prime * result + ((end == null) ? 0 : end.hashCode());
+			result = prime * result
+					+ ((handler == null) ? 0 : handler.hashCode());
+			result = prime * result
+					+ ((catchType == null) ? 0 : catchType.hashCode());
+			result = prime * result + ((start == null) ? 0 : start.hashCode());
+			return result;
+		}
+
+		@Override
+		public boolean equals(final Object obj) {
+			if (this == obj) {
+				return true;
+			}
+			if (obj == null) {
+				return false;
+			}
+			if (!(obj instanceof TryCatchBlock)) {
+				return false;
+			}
+			final TryCatchBlock other = (TryCatchBlock) obj;
+			if (end == null) {
+				if (other.end != null) {
+					return false;
+				}
+			} else if (!end.equals(other.end)) {
+				return false;
+			}
+			if (handler == null) {
+				if (other.handler != null) {
+					return false;
+				}
+			} else if (!handler.equals(other.handler)) {
+				return false;
+			}
+			if (catchType == null) {
+				if (other.catchType != null) {
+					return false;
+				}
+			} else if (!catchType.equals(other.catchType)) {
+				return false;
+			}
+			if (start == null) {
+				if (other.start != null) {
+					return false;
+				}
+			} else if (!start.equals(other.start)) {
+				return false;
+			}
+			return true;
+		}
+	}
+
+	private final Map<Label, List<TryCatchBlock>> tryCatchBlocksGroupedByStartLabel = new LinkedHashMap<Label, List<TryCatchBlock>>();
+
+	private final Map<Label, Label> finallyHandlerStartLabelToTryCatchBlockStartLabel = new HashMap<Label, Label>();
+
+	@Override
+	public void visitTryCatchBlock(final Label start, final Label end,
+			final Label handler, final String type) {
+		if (start == handler) {
+			// Ignore
+		} else {
+			Label tryCatchBlockStart = start;
+			if (type == null) {
+				// @formatter:off
+				/*
+				 * Consider the following Java source:
+				 * try {
+				 *   A();
+				 * } catch (Exception ex) {
+				 *   B();
+				 * } finally {
+				 *   C();
+				 * }
+				 * 
+				 * This may be compiled to the following:
+				 * 0,1.{
+				 *   A();
+				 * 1.} Exception => E.
+				 * 0.} Anything => A.
+				 * => NoEx.
+				 * E,2.{
+				 *   B();
+				 * 2.} Anything => A.
+				 *   C();
+				 *   => End.
+				 * E.}
+				 * A.{
+				 *   C();
+				 *   => End.
+				 * A.}
+				 * NoEx.{
+				 *   C();
+				 *   => End.
+				 * NoEx.}
+				 * End.
+				 * 
+				 * Note the finally block which starts within a catch block and 
+				 * is handled by the same catch anything block at the end.
+				 */
+				// @formatter:on
+				if (!finallyHandlerStartLabelToTryCatchBlockStartLabel
+						.containsKey(handler)) {
+					finallyHandlerStartLabelToTryCatchBlockStartLabel.put(
+							handler, start);
+				} else {
+					tryCatchBlockStart = finallyHandlerStartLabelToTryCatchBlockStartLabel
+							.get(handler);
+				}
+			}
+
+			if (!tryCatchBlocksGroupedByStartLabel
+					.containsKey(tryCatchBlockStart)) {
+				tryCatchBlocksGroupedByStartLabel.put(tryCatchBlockStart,
+						new ArrayList<TryCatchBlock>());
+			}
+			final List<TryCatchBlock> tryCatchBlocks = tryCatchBlocksGroupedByStartLabel
+					.get(tryCatchBlockStart);
+			tryCatchBlocks.add(new TryCatchBlock(start, end, type, handler));
+		}
+
+		super.visitTryCatchBlock(start, end, handler, type);
 	}
 
 	@Override
@@ -415,7 +448,7 @@ public class MethodAnalyzer extends MethodProbesVisitor {
 		addProbeAtom(probeId);
 
 		visitInsn(opcode);
-		probeJumps.add(new Jump(lastInsn, label));
+		allJumps.add(new Jump(lastInsn, label));
 		addProbe(probeId);
 	}
 
@@ -469,159 +502,160 @@ public class MethodAnalyzer extends MethodProbesVisitor {
 		for (final Jump j : jumps) {
 			LabelInfo.getInstruction(j.target).setPredecessor(j.source);
 		}
+		// Complete list of jumps
+		allJumps.addAll(jumps);
 
-		// Clean up try/catch/finally block data
-		final Map<TryBlockStart, List<Label>> finallyBlockStartLabelsGroups = computeFinallyBlockStartLabelsGroups();
+		final List<FinallyBlockEndInstructions> finallyBlockEndInstructions = new ArrayList<FinallyBlockEndInstructions>();
 
-		final List<FinallyBlockEndInsns> finallyBlocks = new ArrayList<FinallyBlockEndInsns>();
+		final Map<Label, List<Label>> finallyBlockGroups = computeFinallyBlockGroups();
+		if (finallyBlockGroups.size() > 0) {
+			System.out.println("# Coverage of: " + coverage.getName());
+		}
 
-		while (!finallyBlockStartLabelsGroups.isEmpty()) {
-			final Entry<TryBlockStart, List<Label>> entry = removeFirstEntryFromMap(finallyBlockStartLabelsGroups);
-			final List<Label> finallyBlockStartLabels = entry.getValue();
+		while (!finallyBlockGroups.isEmpty()) {
+			final Entry<Label, List<Label>> entry = removeFirstEntryFromMap(finallyBlockGroups);
+			final List<Label> finallyBlockStarts = entry.getValue();
 
-			final int[] finallyBlockPointers = new int[entry.getValue().size()];
-			for (int ii = 0; ii < finallyBlockPointers.length; ii++) {
-				finallyBlockPointers[ii] = methodAtoms.indexOf(new MethodAtom(
-						finallyBlockStartLabels.get(ii)));
-				finallyBlockPointers[ii]++;
+			final int[] methodAtomPointers = new int[entry.getValue().size()];
+			for (int ii = 0; ii < methodAtomPointers.length; ii++) {
+				methodAtomPointers[ii] = methodAtoms.indexOf(new MethodAtom(
+						finallyBlockStarts.get(ii)));
+				// Skip over the Label
+				methodAtomPointers[ii]++;
 			}
-			// Skip over extra instruction and label in catch(anything) block
-			finallyBlockPointers[0] += 2;
+			// Skip over extra instruction (astore - save caught exception) and
+			// label in catch(anything) block
+			methodAtomPointers[0] += 2;
 
 			System.out.println("Examining try/catch/block");
 			System.out.println("Starting pointers: "
-					+ Arrays.toString(finallyBlockPointers));
-
-			if ((finallyBlockPointers.length == 2)
-					&& (finallyBlockPointers[0] == finallyBlockPointers[1])) {
-				continue;
-			}
+					+ Arrays.toString(methodAtomPointers));
 
 			// Initialize finally block end insn ponters array
-			final int[] finallyBlockEndInsnPointers = new int[finallyBlockPointers.length];
-			for (int ii = 0; ii < finallyBlockEndInsnPointers.length; ii++) {
-				finallyBlockEndInsnPointers[ii] = finallyBlockPointers[ii];
+			final int[] methodInsnPointers = new int[methodAtomPointers.length];
+			for (int ii = 0; ii < methodInsnPointers.length; ii++) {
+				methodInsnPointers[ii] = methodAtomPointers[ii];
 			}
 
 			scanningLoop: while (true) {
 				// Examine all current pointers
-				if (isInconsistentAtomTypes(finallyBlockPointers)) {
+				if (isInconsistentAtomTypes(methodAtomPointers)) {
 					break scanningLoop;
 				}
 
-				printConsistentPointers(finallyBlockPointers);
+				printConsistentPointers(methodAtomPointers);
 
 				boolean isInsnAtom = false;
-				if (isProbeAtom(finallyBlockPointers[0])) {
-					if (isAnyNonPrimaryProbeCovered(finallyBlockPointers)) {
-						markPrimaryFinallyBlockProbeCovered(finallyBlockPointers);
+				if (isProbeAtom(methodAtomPointers[0])) {
+					if (isAnyNonPrimaryProbeCovered(methodAtomPointers)) {
+						markPrimaryFinallyBlockProbeCovered(methodAtomPointers);
 					}
-				} else if (isLabelAtom(finallyBlockPointers[0])) {
-					collapseDuplicateTryFinallyBlocks(finallyBlockPointers,
-							finallyBlockStartLabelsGroups);
-				} else if (isInsnAtom(finallyBlockPointers[0])) {
+				} else if (isLabelAtom(methodAtomPointers[0])) {
+					collapseDuplicateTryFinallyBlocks(methodAtomPointers,
+							finallyBlockGroups);
+				} else if (isInsnAtom(methodAtomPointers[0])) {
 					isInsnAtom = true;
-					if (isInconsistentInsns(finallyBlockPointers)) {
+					if (isInconsistentInsns(methodAtomPointers)) {
 						break scanningLoop;
 					} else {
-						disableCoverageOfNonPrimaryFinallyBlock(finallyBlockPointers);
+						disableCoverageOfNonPrimaryFinallyBlock(methodAtomPointers);
 					}
 				}
 
 				// Copy latest pointers into the end array
 				if (isInsnAtom) {
-					for (int ii = 0; ii < finallyBlockPointers.length; ii++) {
-						finallyBlockEndInsnPointers[ii] = finallyBlockPointers[ii];
+					for (int ii = 0; ii < methodAtomPointers.length; ii++) {
+						methodInsnPointers[ii] = methodAtomPointers[ii];
 					}
 				}
 
 				// Increment all pointers
-				for (int ii = 0; ii < finallyBlockPointers.length; ii++) {
-					finallyBlockPointers[ii]++;
-					if ((finallyBlockPointers[ii] >= methodAtoms.size())
-							|| (finallyBlockPointers[ii] < 0)) {
+				for (int ii = 0; ii < methodAtomPointers.length; ii++) {
+					methodAtomPointers[ii]++;
+					if ((methodAtomPointers[ii] >= methodAtoms.size())
+							|| (methodAtomPointers[ii] < 0)) {
 						break scanningLoop;
 					}
 				}
 			}
 
 			System.out.println("End pointers: "
-					+ Arrays.toString(finallyBlockEndInsnPointers));
+					+ Arrays.toString(methodInsnPointers));
 
 			// Print some insns after the end of the consistent insns
 			for (int ii = 1; ii <= 5; ii++) {
-				final int[] lookahead = new int[finallyBlockEndInsnPointers.length];
+				final int[] lookahead = new int[methodInsnPointers.length];
 				for (int jj = 0; jj < lookahead.length; jj++) {
-					lookahead[jj] = finallyBlockEndInsnPointers[jj] + ii;
+					lookahead[jj] = methodInsnPointers[jj] + ii;
 				}
 				printInconsistentPointers(lookahead);
 			}
 
 			// Skip extra label in exception copies and unify final probes
-			if (isProbeAtom(finallyBlockEndInsnPointers[0] + 1)) {
-				finallyBlockEndInsnPointers[0] += 1;
-				for (int ii = 1; ii < finallyBlockEndInsnPointers.length; ii++) {
-					finallyBlockEndInsnPointers[ii] += 1;
-					if (!isProbeAtom(finallyBlockEndInsnPointers[ii])) {
-						finallyBlockEndInsnPointers[ii] += 1;
+			if (isProbeAtom(methodInsnPointers[0] + 1)) {
+				methodInsnPointers[0] += 1;
+				for (int ii = 1; ii < methodInsnPointers.length; ii++) {
+					methodInsnPointers[ii] += 1;
+					if (!isProbeAtom(methodInsnPointers[ii])) {
+						methodInsnPointers[ii] += 1;
 					}
 				}
-				if (isConsistentAtomTypes(finallyBlockEndInsnPointers)
-						&& isProbeAtom(finallyBlockEndInsnPointers[0])) {
-					printConsistentPointers(finallyBlockEndInsnPointers);
-					if (isAnyNonPrimaryProbeCovered(finallyBlockEndInsnPointers)) {
-						markPrimaryFinallyBlockProbeCovered(finallyBlockEndInsnPointers);
+				if (isConsistentAtomTypes(methodInsnPointers)
+						&& isProbeAtom(methodInsnPointers[0])) {
+					printConsistentPointers(methodInsnPointers);
+					if (isAnyNonPrimaryProbeCovered(methodInsnPointers)) {
+						markPrimaryFinallyBlockProbeCovered(methodInsnPointers);
 					}
 				}
 
 				System.out.println("A: Pre-Fixed end insn pointers: "
-						+ Arrays.toString(finallyBlockEndInsnPointers));
+						+ Arrays.toString(methodInsnPointers));
 
 				// Seek to the final instructions
-				finallyBlockEndInsnPointers[0] += 4;
-				for (int ii = 1; ii < (finallyBlockEndInsnPointers.length - 1); ii++) {
-					finallyBlockEndInsnPointers[ii] += 1;
+				methodInsnPointers[0] += 4;
+				for (int ii = 1; ii < (methodInsnPointers.length - 1); ii++) {
+					methodInsnPointers[ii] += 1;
 				}
-				if (isInsnAtom(finallyBlockEndInsnPointers[finallyBlockEndInsnPointers.length - 1] + 1)) {
-					finallyBlockEndInsnPointers[finallyBlockEndInsnPointers.length - 1] += 1;
+				if (isInsnAtom(methodInsnPointers[methodInsnPointers.length - 1] + 1)) {
+					methodInsnPointers[methodInsnPointers.length - 1] += 1;
 				} else {
-					finallyBlockEndInsnPointers[finallyBlockEndInsnPointers.length - 1] -= 1;
+					methodInsnPointers[methodInsnPointers.length - 1] -= 1;
 				}
-				disableCoverageOfNonPrimaryFinallyBlock(finallyBlockEndInsnPointers);
+				disableCoverageOfNonPrimaryFinallyBlock(methodInsnPointers);
 			} else {
 				System.out.println("B: Pre-Fixed end insn pointers: "
-						+ Arrays.toString(finallyBlockEndInsnPointers));
+						+ Arrays.toString(methodInsnPointers));
 
 				// Seek to the final instructions
 				for (int ii = 3; ii <= 4; ii++) {
-					if (isInsnAtom(finallyBlockEndInsnPointers[0] + ii)) {
-						finallyBlockEndInsnPointers[0] += ii;
+					if (isInsnAtom(methodInsnPointers[0] + ii)) {
+						methodInsnPointers[0] += ii;
 						break;
 					}
 				}
-				for (int ii = 1; ii < (finallyBlockEndInsnPointers.length - 1); ii++) {
-					finallyBlockEndInsnPointers[ii] += 2;
+				for (int ii = 1; ii < (methodInsnPointers.length - 1); ii++) {
+					methodInsnPointers[ii] += 2;
 				}
-				disableCoverageOfNonPrimaryFinallyBlock(finallyBlockEndInsnPointers);
+				disableCoverageOfNonPrimaryFinallyBlock(methodInsnPointers);
 			}
 
 			System.out.println("Fixed end insn pointers: "
-					+ Arrays.toString(finallyBlockEndInsnPointers));
+					+ Arrays.toString(methodInsnPointers));
 
 			// Construct details about the end of each finally block
-			if (finallyBlockEndInsnPointers[0] > -1) {
+			if (methodInsnPointers[0] > -1) {
 				final Instruction primaryEndInsn = methodAtoms
-						.get(finallyBlockEndInsnPointers[0]).instruction;
+						.get(methodInsnPointers[0]).instruction;
 				final List<Instruction> otherEndInsns = new ArrayList<Instruction>();
-				for (int ii = 1; ii < finallyBlockEndInsnPointers.length; ii++) {
+				for (int ii = 1; ii < methodInsnPointers.length; ii++) {
 					final Instruction insn = methodAtoms
-							.get(finallyBlockEndInsnPointers[ii]).instruction;
+							.get(methodInsnPointers[ii]).instruction;
 					otherEndInsns.add(insn);
 				}
 
-				final FinallyBlockEndInsns block = new FinallyBlockEndInsns(
+				final FinallyBlockEndInstructions block = new FinallyBlockEndInstructions(
 						primaryEndInsn, otherEndInsns);
-				finallyBlocks.add(block);
+				finallyBlockEndInstructions.add(block);
 			}
 
 			System.out.println("# done try/catch/block");
@@ -636,10 +670,10 @@ public class MethodAnalyzer extends MethodProbesVisitor {
 		}
 
 		// Propagate coverage into finally block duplicates
-		for (final FinallyBlockEndInsns block : finallyBlocks) {
-			if (!isCovered(block.primaryEndInsn)
-					&& isAnyCovered(block.otherEndInsns)) {
-				block.primaryEndInsn.setCovered();
+		for (final FinallyBlockEndInstructions block : finallyBlockEndInstructions) {
+			if (!isCovered(block.catchAnythingEndInstructions)
+					&& isAnyCovered(block.otherEndInstructions)) {
+				block.catchAnythingEndInstructions.setCovered();
 			}
 		}
 
@@ -727,14 +761,15 @@ public class MethodAnalyzer extends MethodProbesVisitor {
 		return (insn.getCoveredBranches() > 0);
 	}
 
-	private static class FinallyBlockEndInsns {
-		private final Instruction primaryEndInsn;
-		private final List<Instruction> otherEndInsns;
+	private static class FinallyBlockEndInstructions {
+		private final Instruction catchAnythingEndInstructions;
+		private final List<Instruction> otherEndInstructions;
 
-		public FinallyBlockEndInsns(final Instruction primaryEndInsn,
-				final List<Instruction> otherEndInsns) {
-			this.primaryEndInsn = primaryEndInsn;
-			this.otherEndInsns = otherEndInsns;
+		public FinallyBlockEndInstructions(
+				final Instruction catchAnythingEndInstructions,
+				final List<Instruction> otherEndInstructions) {
+			this.catchAnythingEndInstructions = catchAnythingEndInstructions;
+			this.otherEndInstructions = otherEndInstructions;
 		}
 	}
 
@@ -763,26 +798,24 @@ public class MethodAnalyzer extends MethodProbesVisitor {
 	}
 
 	private void collapseDuplicateTryFinallyBlocks(
-			final int[] finallyBlockPointers,
-			final Map<TryBlockStart, List<Label>> finallyDuplicateStarts) {
-		TryBlockStart firstTryBlockStart = null;
+			final int[] methodAtomPointers,
+			final Map<Label, List<Label>> finallyBlockGroups) {
+		Label firstLabel = null;
 		final List<Label> finallyDups = new ArrayList<Label>();
-		for (int ii = 0; ii < finallyBlockPointers.length; ii++) {
-			final TryBlockStart tryBlockStart = new TryBlockStart(
-					methodAtoms.get(finallyBlockPointers[ii]).label);
+		for (int ii = 0; ii < methodAtomPointers.length; ii++) {
+			final Label tryBlockStart = methodAtoms.get(methodAtomPointers[ii]).label;
 
-			if (finallyDuplicateStarts.containsKey(tryBlockStart)) {
-				if (firstTryBlockStart == null) {
-					firstTryBlockStart = tryBlockStart;
+			if (finallyBlockGroups.containsKey(tryBlockStart)) {
+				if (firstLabel == null) {
+					firstLabel = tryBlockStart;
 				}
 
-				finallyDups
-						.addAll(finallyDuplicateStarts.remove(tryBlockStart));
+				finallyDups.addAll(finallyBlockGroups.remove(tryBlockStart));
 			}
 		}
 
-		if (firstTryBlockStart != null) {
-			finallyDuplicateStarts.put(firstTryBlockStart, finallyDups);
+		if (firstLabel != null) {
+			finallyBlockGroups.put(firstLabel, finallyDups);
 		}
 	}
 
@@ -790,8 +823,8 @@ public class MethodAnalyzer extends MethodProbesVisitor {
 			final int[] finallyBlockPointers) {
 		final int probeIndex = methodAtoms.get(finallyBlockPointers[0]).probeIndex;
 		if (!probes[probeIndex]) {
-			final Instruction probeInsn = probeInsns.get(Integer
-					.valueOf(probeIndex));
+			final Instruction probeInsn = probeIndexToInstructionPriorToProbe
+					.get(Integer.valueOf(probeIndex));
 			coveredProbes.add(probeInsn);
 		}
 	}
@@ -861,7 +894,7 @@ public class MethodAnalyzer extends MethodProbesVisitor {
 		return entry;
 	}
 
-	private Map<TryBlockStart, List<Label>> computeFinallyBlockStartLabelsGroups() {
+	private Map<Label, List<Label>> computeFinallyBlockGroups() {
 		// @formatter:off
 		/*
 		There are two try/catch block layouts which are used:
@@ -936,17 +969,17 @@ public class MethodAnalyzer extends MethodProbesVisitor {
 		// - nx catch block finally handlers
 		// - 1x no-exception handler
 
-		final Map<TryBlockStart, List<Label>> finallyBlockStartLabelsGroups = new LinkedHashMap<TryBlockStart, List<Label>>();
+		final Map<Label, List<Label>> finallyBlockStartLabelsGroups = new LinkedHashMap<Label, List<Label>>();
 
-		for (final Entry<TryBlockStart, List<TryBlock>> tryBlockGroupEntry : tryBlockGroups
+		for (final Entry<Label, List<TryCatchBlock>> tryBlockGroupEntry : tryCatchBlocksGroupedByStartLabel
 				.entrySet()) {
-			final TryBlockStart tryBlockStart = tryBlockGroupEntry.getKey();
+			final Label tryBlockStart = tryBlockGroupEntry.getKey();
 
 			boolean seenFinally = false;
 			boolean seenCatch = false;
 			Label catchEnd = null;
-			for (final TryBlock tryBlock : tryBlockGroupEntry.getValue()) {
-				if (tryBlock.handlerType == null) {
+			for (final TryCatchBlock tryBlock : tryBlockGroupEntry.getValue()) {
+				if (tryBlock.catchType == null) {
 					seenFinally = true;
 				} else {
 					seenCatch = true;
@@ -958,49 +991,50 @@ public class MethodAnalyzer extends MethodProbesVisitor {
 				continue;
 			}
 
-			final List<Label> finallyBlockStartLabelsGroup = new ArrayList<Label>();
+			final List<Label> finallyBlockStarts = new ArrayList<Label>();
 
 			// - 1x finally block handler
-			for (final TryBlock tryBlock : tryBlockGroupEntry.getValue()) {
-				if (tryBlock.handlerType == null) {
-					if (tryBlock.start == tryBlockStart.label) {
-						finallyBlockStartLabelsGroup.add(tryBlock.handler);
+			for (final TryCatchBlock tryBlock : tryBlockGroupEntry.getValue()) {
+				if (tryBlock.catchType == null) {
+					if (tryBlock.start == tryBlockStart) {
+						finallyBlockStarts.add(tryBlock.handler);
 					}
 				}
 			}
 
 			// - nx catch block finally handlers
 			if (seenCatch) {
-				for (final TryBlock tryBlock : tryBlockGroupEntry.getValue()) {
-					if ((tryBlock.handlerType == null)
+				catchBlocks: for (final TryCatchBlock tryBlock : tryBlockGroupEntry
+						.getValue()) {
+					if ((tryBlock.catchType == null)
 							&& (tryBlock.end != catchEnd)) {
 						final Label finallyBlock = tryBlock.end;
 
 						final int finallyBlockIndex = methodAtoms
 								.indexOf(new MethodAtom(finallyBlock));
-						if (isInsnAtom(finallyBlockIndex - 1)) {
-							final int insnOpcode = methodAtoms
-									.get(finallyBlockIndex - 1).instruction
-									.getOpcode();
-							if (insnOpcode == Opcodes.ATHROW) {
-								break;
+						for (int ii = 3; ii >= 1; ii--) {
+							if (isInsnAtom(finallyBlockIndex - ii)) {
+								final int insnOpcode = methodAtoms
+										.get(finallyBlockIndex - ii).instruction
+										.getOpcode();
+								if (insnOpcode == Opcodes.ATHROW) {
+									continue catchBlocks;
+								}
 							}
 						}
 
-						if (!finallyBlockStartLabelsGroup
-								.contains(finallyBlock)) {
-							finallyBlockStartLabelsGroup.add(finallyBlock);
+						if (!finallyBlockStarts.contains(finallyBlock)) {
+							finallyBlockStarts.add(finallyBlock);
 						}
 					}
 				}
 			}
 
 			// - 1x no-exception handler
-			final TryBlock firstCatchBlock = tryBlockGroupEntry.getValue().get(
-					0);
-			Label firstTryBlockEnd = firstCatchBlock.end;
+			final TryCatchBlock firstTryCatchBlock = tryBlockGroupEntry
+					.getValue().get(0);
 			final int firstTryBlockEndIndex = methodAtoms
-					.indexOf(new MethodAtom(firstTryBlockEnd));
+					.indexOf(new MethodAtom(firstTryCatchBlock.end));
 
 			if (isInsnAtom(firstTryBlockEndIndex - 1)) {
 				if (methodAtoms.get(firstTryBlockEndIndex - 1).instruction
@@ -1013,20 +1047,14 @@ public class MethodAnalyzer extends MethodProbesVisitor {
 				}
 			}
 
-			boolean seenGoto = false;
-			Instruction firstInstrAfterTryBlockEnd = null;
+			Instruction gotoInsn = null;
 			for (int ii = -1; ii <= 3; ii++) {
-				if (isLabelAtom(firstTryBlockEndIndex + ii)) {
-					firstTryBlockEnd = methodAtoms.get(firstTryBlockEndIndex
-							+ ii).label;
-				} else if (isInsnAtom(firstTryBlockEndIndex + ii)) {
-					final int insnOpcode = methodAtoms
-							.get(firstTryBlockEndIndex + ii).instruction
-							.getOpcode();
-					firstInstrAfterTryBlockEnd = methodAtoms
+				if (isInsnAtom(firstTryBlockEndIndex + ii)) {
+					final Instruction insn = methodAtoms
 							.get(firstTryBlockEndIndex + ii).instruction;
-					if (insnOpcode == Opcodes.GOTO) {
-						seenGoto = true;
+
+					if (insn.getOpcode() == Opcodes.GOTO) {
+						gotoInsn = insn;
 						break;
 					}
 
@@ -1036,30 +1064,34 @@ public class MethodAnalyzer extends MethodProbesVisitor {
 				}
 			}
 
-			if (seenGoto) {
-				boolean checkProbeJumps = true;
-				for (final Jump jump : jumps) {
-					if (jump.source == firstInstrAfterTryBlockEnd) {
-						finallyBlockStartLabelsGroup.add(jump.target);
-						checkProbeJumps = false;
+			Label noExceptionBlockStart = null;
+			if (gotoInsn != null) {
+				for (final Jump jump : allJumps) {
+					if (jump.source == gotoInsn) {
+						noExceptionBlockStart = jump.target;
 						break;
 					}
 				}
-				if (checkProbeJumps) {
-					for (final Jump jump : probeJumps) {
-						if (jump.source == firstInstrAfterTryBlockEnd) {
-							finallyBlockStartLabelsGroup.add(jump.target);
-							break;
-						}
-					}
-				}
 			} else {
-				finallyBlockStartLabelsGroup.add(firstTryBlockEnd);
+				final int endPointer = methodAtoms.indexOf(new MethodAtom(
+						firstTryCatchBlock.end));
+				final int handlerPointer = methodAtoms.indexOf(new MethodAtom(
+						firstTryCatchBlock.handler));
+
+				if (endPointer == (handlerPointer + 2)) {
+					// Suppress handler start label
+				} else {
+					noExceptionBlockStart = firstTryCatchBlock.end;
+				}
 			}
 
-			if (finallyBlockStartLabelsGroup.size() > 1) {
+			if (noExceptionBlockStart != null) {
+				finallyBlockStarts.add(noExceptionBlockStart);
+			}
+
+			if (finallyBlockStarts.size() > 1) {
 				finallyBlockStartLabelsGroups.put(tryBlockStart,
-						finallyBlockStartLabelsGroup);
+						finallyBlockStarts);
 			}
 		}
 
@@ -1074,7 +1106,8 @@ public class MethodAnalyzer extends MethodProbesVisitor {
 
 	private void addProbe(final int probeId) {
 		if (lastInsn != null) {
-			probeInsns.put(Integer.valueOf(probeId), lastInsn);
+			probeIndexToInstructionPriorToProbe.put(Integer.valueOf(probeId),
+					lastInsn);
 			lastInsn.addBranch();
 			if (probes != null && probes[probeId]) {
 				coveredProbes.add(lastInsn);
