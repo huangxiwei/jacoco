@@ -23,6 +23,10 @@ import org.jacoco.core.test.validation.targets.Stubs.StubException;
 public class Target03 implements Runnable {
 
 	public void run() {
+		nestedFinally();
+	}
+
+	private void foo() {
 		try {
 			implicitException();
 		} catch (StubException e) {
@@ -138,6 +142,24 @@ public class Target03 implements Runnable {
 				nop(); // $line-finallyBranchCoverage.contents1$
 			} else if (checked) { // $line-finallyBranchCoverage.cond2$
 				nop(); // $line-finallyBranchCoverage.contents2$
+			}
+		}
+	}
+
+	private void nestedFinally() {
+		nop();
+		try {
+			nop();
+		} catch (IllegalArgumentException ex) {
+			nop();
+		} finally { // $line-nestedFinally.finally$
+			nop(); // $line-nestedFinally.finally-line$
+			try {
+				nop();
+			} catch (IllegalArgumentException ex) {
+				nop();
+			} finally { // $line-nestedFinally.inner-finally$
+				nop(); // $line-nestedFinally.inner-finally-line$
 			}
 		}
 	}

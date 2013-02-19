@@ -93,7 +93,7 @@ public class ClassAnalyzer extends ClassProbesVisitor {
 
 		final MethodAnalyzer visitor = new MethodAnalyzer(stringPool.get(name),
 				stringPool.get(desc), stringPool.get(signature), probes,
-				coverageFilter) {
+				coverageFilter, true, false) {
 			@Override
 			public void visitEnd() {
 				super.visitEnd();

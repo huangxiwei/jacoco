@@ -136,6 +136,10 @@ public class MethodAnalyzer extends MethodProbesVisitor {
 	private final Map<Integer, Instruction> probeIndexToInstructionPriorToProbe = new HashMap<Integer, Instruction>();
 	private final List<MethodAtom> methodAtoms = new ArrayList<MethodAtom>();
 
+	private final boolean finallyDedup;
+
+	private final boolean finallyDedupDebug;
+
 	/**
 	 * New Method analyzer for the given probe data.
 	 * 
@@ -145,19 +149,25 @@ public class MethodAnalyzer extends MethodProbesVisitor {
 	 *            description of the method
 	 * @param signature
 	 *            optional parameterized signature
-	 * 
 	 * @param probes
 	 *            recorded probe date of the containing class or
 	 *            <code>null</code> if the class is not executed at all
 	 * @param coverageFilterStatus
 	 *            filter which restricts the coverage data
+	 * @param finallyDedup
+	 *            whether to perform finally block dedup
+	 * @param finallyDedupDebug
+	 *            whether to print out finally block debug info
 	 */
 	public MethodAnalyzer(final String name, final String desc,
 			final String signature, final boolean[] probes,
-			final ICoverageFilterStatus coverageFilterStatus) {
+			final ICoverageFilterStatus coverageFilterStatus,
+			final boolean finallyDedup, final boolean finallyDedupDebug) {
 		super();
 		this.probes = probes;
 		this.coverageFilterStatus = coverageFilterStatus;
+		this.finallyDedup = finallyDedup;
+		this.finallyDedupDebug = true;
 		this.coverage = new MethodCoverageImpl(name, desc, signature);
 	}
 
@@ -505,11 +515,77 @@ public class MethodAnalyzer extends MethodProbesVisitor {
 		// Complete list of jumps
 		allJumps.addAll(jumps);
 
+		List<FinallyBlockEndInstructions> finallyBlockEndInstructions = null;
+		if (finallyDedup) {
+			finallyBlockEndInstructions = beginFinallyBlockDedup();
+		}
+
+		// Propagate probe values:
+		for (final Instruction p : coveredProbes) {
+			p.setCovered();
+		}
+		for (final Instruction p : disabledProbes) {
+			p.setDisabled();
+		}
+
+		if (finallyDedup) {
+			completeFinallyBlockDedup(finallyBlockEndInstructions);
+		}
+
+		// Report result:
+		coverage.ensureCapacity(firstLine, lastLine);
+		for (final Instruction i : instructions) {
+			final int total = i.getBranches();
+			final int covered = i.getCoveredBranches();
+			final boolean coverageEnabled = i.isCoverageEnabled();
+			final ICounter instrCounter;
+			if (!coverageEnabled) {
+				instrCounter = CounterImpl.COUNTER_0_0;
+			} else if (covered > 0) {
+				instrCounter = CounterImpl.COUNTER_0_1;
+			} else {
+				instrCounter = CounterImpl.COUNTER_1_0;
+			}
+			final ICounter branchCounter;
+			if ((total > 1) && coverageEnabled) {
+				branchCounter = CounterImpl.getInstance(total - covered,
+						covered);
+			} else {
+				branchCounter = CounterImpl.COUNTER_0_0;
+			}
+			coverage.increment(instrCounter, branchCounter, i.getLine());
+		}
+		coverage.incrementMethodCounter();
+	}
+
+	/**
+	 * {@link #beginFinallyBlockDedup()} handles copying probe coverage between
+	 * finally block duplicates. However, this isn't sufficient to capture
+	 * coverage of propagated from probes after the end of a finally block
+	 * duplicate.
+	 * <p>
+	 * This method handles the propagation of this coverage to the catch
+	 * anything finally block.
+	 * 
+	 * @param finallyBlockEndInstructions
+	 */
+	private void completeFinallyBlockDedup(
+			final List<FinallyBlockEndInstructions> finallyBlockEndInstructions) {
+		for (final FinallyBlockEndInstructions block : finallyBlockEndInstructions) {
+			if (!isCovered(block.catchAnythingEndInstructions)
+					&& isAnyCovered(block.otherEndInstructions)) {
+				block.catchAnythingEndInstructions.setCovered();
+			}
+		}
+	}
+
+	private List<FinallyBlockEndInstructions> beginFinallyBlockDedup() {
 		final List<FinallyBlockEndInstructions> finallyBlockEndInstructions = new ArrayList<FinallyBlockEndInstructions>();
 
 		final Map<Label, List<Label>> finallyBlockGroups = computeFinallyBlockGroups();
-		if (finallyBlockGroups.size() > 0) {
-			System.out.println("# Coverage of: " + coverage.getName());
+		if (finallyDedupDebug && finallyBlockGroups.size() > 0) {
+			System.out.println("# Finally block dedup coverage of: "
+					+ coverage.getName());
 		}
 
 		while (!finallyBlockGroups.isEmpty()) {
@@ -527,9 +603,11 @@ public class MethodAnalyzer extends MethodProbesVisitor {
 			// label in catch(anything) block
 			methodAtomPointers[0] += 2;
 
-			System.out.println("Examining try/catch/block");
-			System.out.println("Starting pointers: "
-					+ Arrays.toString(methodAtomPointers));
+			if (finallyDedupDebug) {
+				System.out.println("Examining try/catch/block");
+				System.out.println("Starting pointers: "
+						+ Arrays.toString(methodAtomPointers));
+			}
 
 			// Initialize finally block end insn ponters array
 			final int[] methodInsnPointers = new int[methodAtomPointers.length];
@@ -543,7 +621,9 @@ public class MethodAnalyzer extends MethodProbesVisitor {
 					break scanningLoop;
 				}
 
-				printConsistentPointers(methodAtomPointers);
+				if (finallyDedupDebug) {
+					printConsistentPointers(methodAtomPointers);
+				}
 
 				boolean isInsnAtom = false;
 				if (isProbeAtom(methodAtomPointers[0])) {
@@ -579,16 +659,17 @@ public class MethodAnalyzer extends MethodProbesVisitor {
 				}
 			}
 
-			System.out.println("End pointers: "
-					+ Arrays.toString(methodInsnPointers));
-
-			// Print some insns after the end of the consistent insns
-			for (int ii = 1; ii <= 5; ii++) {
-				final int[] lookahead = new int[methodInsnPointers.length];
-				for (int jj = 0; jj < lookahead.length; jj++) {
-					lookahead[jj] = methodInsnPointers[jj] + ii;
+			if (finallyDedupDebug) {
+				System.out.println("End pointers: "
+						+ Arrays.toString(methodInsnPointers));
+				// Print some insns after the end of the consistent insns
+				for (int ii = 1; ii <= 5; ii++) {
+					final int[] lookahead = new int[methodInsnPointers.length];
+					for (int jj = 0; jj < lookahead.length; jj++) {
+						lookahead[jj] = methodInsnPointers[jj] + ii;
+					}
+					printInconsistentPointers(lookahead);
 				}
-				printInconsistentPointers(lookahead);
 			}
 
 			// Skip extra label in exception copies and unify final probes
@@ -602,14 +683,18 @@ public class MethodAnalyzer extends MethodProbesVisitor {
 				}
 				if (isConsistentAtomTypes(methodInsnPointers)
 						&& isProbeAtom(methodInsnPointers[0])) {
-					printConsistentPointers(methodInsnPointers);
+					if (finallyDedupDebug) {
+						printConsistentPointers(methodInsnPointers);
+					}
 					if (isAnyNonPrimaryProbeCovered(methodInsnPointers)) {
 						markPrimaryFinallyBlockProbeCovered(methodInsnPointers);
 					}
 				}
 
-				System.out.println("A: Pre-Fixed end insn pointers: "
-						+ Arrays.toString(methodInsnPointers));
+				if (finallyDedupDebug) {
+					System.out.println("A: Pre-Fixed end insn pointers: "
+							+ Arrays.toString(methodInsnPointers));
+				}
 
 				// Seek to the final instructions
 				methodInsnPointers[0] += 4;
@@ -623,8 +708,10 @@ public class MethodAnalyzer extends MethodProbesVisitor {
 				}
 				disableCoverageOfNonPrimaryFinallyBlock(methodInsnPointers);
 			} else {
-				System.out.println("B: Pre-Fixed end insn pointers: "
-						+ Arrays.toString(methodInsnPointers));
+				if (finallyDedupDebug) {
+					System.out.println("B: Pre-Fixed end insn pointers: "
+							+ Arrays.toString(methodInsnPointers));
+				}
 
 				// Seek to the final instructions
 				for (int ii = 3; ii <= 4; ii++) {
@@ -639,8 +726,10 @@ public class MethodAnalyzer extends MethodProbesVisitor {
 				disableCoverageOfNonPrimaryFinallyBlock(methodInsnPointers);
 			}
 
-			System.out.println("Fixed end insn pointers: "
-					+ Arrays.toString(methodInsnPointers));
+			if (finallyDedupDebug) {
+				System.out.println("Fixed end insn pointers: "
+						+ Arrays.toString(methodInsnPointers));
+			}
 
 			// Construct details about the end of each finally block
 			if (methodInsnPointers[0] > -1) {
@@ -658,49 +747,12 @@ public class MethodAnalyzer extends MethodProbesVisitor {
 				finallyBlockEndInstructions.add(block);
 			}
 
-			System.out.println("# done try/catch/block");
-		}
-
-		// Propagate probe values:
-		for (final Instruction p : coveredProbes) {
-			p.setCovered();
-		}
-		for (final Instruction p : disabledProbes) {
-			p.setDisabled();
-		}
-
-		// Propagate coverage into finally block duplicates
-		for (final FinallyBlockEndInstructions block : finallyBlockEndInstructions) {
-			if (!isCovered(block.catchAnythingEndInstructions)
-					&& isAnyCovered(block.otherEndInstructions)) {
-				block.catchAnythingEndInstructions.setCovered();
+			if (finallyDedupDebug) {
+				System.out.println("# done try/catch/block");
 			}
 		}
 
-		// Report result:
-		coverage.ensureCapacity(firstLine, lastLine);
-		for (final Instruction i : instructions) {
-			final int total = i.getBranches();
-			final int covered = i.getCoveredBranches();
-			final boolean coverageEnabled = i.isCoverageEnabled();
-			final ICounter instrCounter;
-			if (!coverageEnabled) {
-				instrCounter = CounterImpl.COUNTER_0_0;
-			} else if (covered > 0) {
-				instrCounter = CounterImpl.COUNTER_0_1;
-			} else {
-				instrCounter = CounterImpl.COUNTER_1_0;
-			}
-			final ICounter branchCounter;
-			if ((total > 1) && coverageEnabled) {
-				branchCounter = CounterImpl.getInstance(total - covered,
-						covered);
-			} else {
-				branchCounter = CounterImpl.COUNTER_0_0;
-			}
-			coverage.increment(instrCounter, branchCounter, i.getLine());
-		}
-		coverage.incrementMethodCounter();
+		return finallyBlockEndInstructions;
 	}
 
 	private void printConsistentPointers(final int[] finallyBlockPointers) {
@@ -716,9 +768,8 @@ public class MethodAnalyzer extends MethodProbesVisitor {
 			System.out.println("Label");
 		} else if (isInsnAtom(finallyBlockPointers[0])) {
 			if (!isInconsistentInsns(finallyBlockPointers)) {
-				final int insn = methodAtoms.get(finallyBlockPointers[0]).instruction
-						.getOpcode();
-				System.out.println("Insn: " + OPCODES[insn]);
+				final int insnOpCode = getInsnAtomOpCode(finallyBlockPointers[0]);
+				System.out.println("Insn: " + OPCODES[insnOpCode]);
 			}
 		}
 	}
@@ -736,9 +787,8 @@ public class MethodAnalyzer extends MethodProbesVisitor {
 				} else if (isLabelAtom(finallyBlockPointers[jj])) {
 					str.append("Label        ");
 				} else if (isInsnAtom(finallyBlockPointers[jj])) {
-					final int insn = methodAtoms.get(finallyBlockPointers[jj]).instruction
-							.getOpcode();
-					str.append("Insn: " + OPCODES[insn]);
+					final int insnOpCode = getInsnAtomOpCode(finallyBlockPointers[jj]);
+					str.append("Insn: " + OPCODES[insnOpCode]);
 				}
 			}
 			str.append("\t,");
@@ -801,7 +851,7 @@ public class MethodAnalyzer extends MethodProbesVisitor {
 			final int[] methodAtomPointers,
 			final Map<Label, List<Label>> finallyBlockGroups) {
 		Label firstLabel = null;
-		final List<Label> finallyDups = new ArrayList<Label>();
+		final List<Label> collapsedFinallyBlockGroup = new ArrayList<Label>();
 		for (int ii = 0; ii < methodAtomPointers.length; ii++) {
 			final Label tryBlockStart = methodAtoms.get(methodAtomPointers[ii]).label;
 
@@ -810,12 +860,17 @@ public class MethodAnalyzer extends MethodProbesVisitor {
 					firstLabel = tryBlockStart;
 				}
 
-				finallyDups.addAll(finallyBlockGroups.remove(tryBlockStart));
+				final List<Label> finallyBlockGroup = finallyBlockGroups
+						.remove(tryBlockStart);
+				if (finallyDedupDebug) {
+					System.out.println("Collapsing: " + finallyBlockGroup);
+				}
+				collapsedFinallyBlockGroup.addAll(finallyBlockGroup);
 			}
 		}
 
 		if (firstLabel != null) {
-			finallyBlockGroups.put(firstLabel, finallyDups);
+			finallyBlockGroups.put(firstLabel, collapsedFinallyBlockGroup);
 		}
 	}
 
@@ -897,7 +952,7 @@ public class MethodAnalyzer extends MethodProbesVisitor {
 	private Map<Label, List<Label>> computeFinallyBlockGroups() {
 		// @formatter:off
 		/*
-		There are two try/catch block layouts which are used:
+		There are (at least) two try/catch block layouts which are used:
 		
 		1) no-exception block at the end:
 		
@@ -975,70 +1030,75 @@ public class MethodAnalyzer extends MethodProbesVisitor {
 				.entrySet()) {
 			final Label tryBlockStart = tryBlockGroupEntry.getKey();
 
-			boolean seenFinally = false;
-			boolean seenCatch = false;
-			Label catchEnd = null;
+			// Check whether there is a catch anything block
+			boolean seenCatchAnythingBlock = false;
+			// Check whether there is a catch a specific exception block
+			boolean seenSpecificThrowableCatch = false;
+			Label catchSpecificThrowableEnd = null;
 			for (final TryCatchBlock tryBlock : tryBlockGroupEntry.getValue()) {
 				if (tryBlock.catchType == null) {
-					seenFinally = true;
+					seenCatchAnythingBlock = true;
 				} else {
-					seenCatch = true;
-					catchEnd = tryBlock.end;
+					seenSpecificThrowableCatch = true;
+					catchSpecificThrowableEnd = tryBlock.end;
 				}
 			}
 
-			if (!seenFinally) {
+			if (!seenCatchAnythingBlock) {
 				continue;
 			}
 
 			final List<Label> finallyBlockStarts = new ArrayList<Label>();
 
-			// - 1x finally block handler
+			// - 1x main catch anything block
 			for (final TryCatchBlock tryBlock : tryBlockGroupEntry.getValue()) {
-				if (tryBlock.catchType == null) {
-					if (tryBlock.start == tryBlockStart) {
-						finallyBlockStarts.add(tryBlock.handler);
-					}
+				if (tryBlock.catchType == null
+						&& tryBlock.start == tryBlockStart) {
+					finallyBlockStarts.add(tryBlock.handler);
 				}
 			}
 
-			// - nx catch block finally handlers
-			if (seenCatch) {
+			// - [0-N]x catch block finally handlers
+			if (seenSpecificThrowableCatch) {
 				catchBlocks: for (final TryCatchBlock tryBlock : tryBlockGroupEntry
 						.getValue()) {
 					if ((tryBlock.catchType == null)
-							&& (tryBlock.end != catchEnd)) {
-						final Label finallyBlock = tryBlock.end;
+							&& (tryBlock.end != catchSpecificThrowableEnd)) {
+						final Label finallyBlockEnd = tryBlock.end;
 
-						final int finallyBlockIndex = methodAtoms
-								.indexOf(new MethodAtom(finallyBlock));
+						// Check the last three instructions for an ATHROW
+						// instruction. If we find one it means there is no
+						// finally block duplicate here as the compiler knows
+						// the catch anything block will be executed.
+						final int finallyBlockEndIndex = methodAtoms
+								.indexOf(new MethodAtom(finallyBlockEnd));
 						for (int ii = 3; ii >= 1; ii--) {
-							if (isInsnAtom(finallyBlockIndex - ii)) {
-								final int insnOpcode = methodAtoms
-										.get(finallyBlockIndex - ii).instruction
-										.getOpcode();
+							final int index = finallyBlockEndIndex - ii;
+							if (isInsnAtom(index)) {
+								final int insnOpcode = getInsnAtomOpCode(index);
 								if (insnOpcode == Opcodes.ATHROW) {
+									// Found ATHROW, continue to skip to examine
+									// the next TryCatchBlock
 									continue catchBlocks;
 								}
 							}
 						}
 
-						if (!finallyBlockStarts.contains(finallyBlock)) {
-							finallyBlockStarts.add(finallyBlock);
+						if (!finallyBlockStarts.contains(finallyBlockEnd)) {
+							finallyBlockStarts.add(finallyBlockEnd);
 						}
 					}
 				}
 			}
 
-			// - 1x no-exception handler
+			// - 1x no-exception block
 			final TryCatchBlock firstTryCatchBlock = tryBlockGroupEntry
 					.getValue().get(0);
 			final int firstTryBlockEndIndex = methodAtoms
 					.indexOf(new MethodAtom(firstTryCatchBlock.end));
 
 			if (isInsnAtom(firstTryBlockEndIndex - 1)) {
-				if (methodAtoms.get(firstTryBlockEndIndex - 1).instruction
-						.getOpcode() == Opcodes.MONITOREXIT) {
+				if (getInsnAtomOpCode(firstTryBlockEndIndex - 1) == Opcodes.MONITOREXIT) {
 					// try/finally blocks are handled differently for
 					// synchronized blocks but these are handled by a
 					// specific filter. The finally code is included
@@ -1047,6 +1107,8 @@ public class MethodAnalyzer extends MethodProbesVisitor {
 				}
 			}
 
+			// Find the GOTO or other instruction at the end of the main try
+			// block.
 			Instruction gotoInsn = null;
 			for (int ii = -1; ii <= 3; ii++) {
 				if (isInsnAtom(firstTryBlockEndIndex + ii)) {
@@ -1066,6 +1128,7 @@ public class MethodAnalyzer extends MethodProbesVisitor {
 
 			Label noExceptionBlockStart = null;
 			if (gotoInsn != null) {
+				// Found a GOTO so follow the jump to the target
 				for (final Jump jump : allJumps) {
 					if (jump.source == gotoInsn) {
 						noExceptionBlockStart = jump.target;
@@ -1073,29 +1136,41 @@ public class MethodAnalyzer extends MethodProbesVisitor {
 					}
 				}
 			} else {
+				// No GOTO so must be a no-jump no-exception block
 				final int endPointer = methodAtoms.indexOf(new MethodAtom(
 						firstTryCatchBlock.end));
 				final int handlerPointer = methodAtoms.indexOf(new MethodAtom(
 						firstTryCatchBlock.handler));
 
 				if (endPointer == (handlerPointer + 2)) {
-					// Suppress handler start label
+					// Suppress the case where the end of the try block is two
+					// atoms after the end of the handler.
 				} else {
 					noExceptionBlockStart = firstTryCatchBlock.end;
 				}
 			}
 
 			if (noExceptionBlockStart != null) {
+				// Found a no-exception block
 				finallyBlockStarts.add(noExceptionBlockStart);
 			}
 
 			if (finallyBlockStarts.size() > 1) {
+				// Found more than one duplicate of the finally block
 				finallyBlockStartLabelsGroups.put(tryBlockStart,
 						finallyBlockStarts);
 			}
 		}
 
 		return finallyBlockStartLabelsGroups;
+	}
+
+	private int getInsnAtomOpCode(final int index) {
+		int opcode = -1;
+		if (isInsnAtom(index)) {
+			opcode = methodAtoms.get(index).instruction.getOpcode();
+		}
+		return opcode;
 	}
 
 	private void addProbeAtom(final int probeId) {

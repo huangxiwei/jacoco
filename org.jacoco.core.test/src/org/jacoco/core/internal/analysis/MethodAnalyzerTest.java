@@ -989,7 +989,7 @@ public class MethodAnalyzerTest implements IProbeIdGenerator {
 	private void runMethodAnalzer(ICoverageFilter filter) {
 		LabelFlowAnalyzer.markLabels(method);
 		final MethodAnalyzer analyzer = new MethodAnalyzer("doit", "()V", null,
-				probes, filter);
+				probes, filter, true, false);
 
 		// Signal to the filter that a new class is being visited
 		filter.includeClass("org/test/TestClass");

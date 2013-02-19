@@ -32,7 +32,16 @@ public class ExceptionsTest extends ValidationTestBase {
 
 	@Test
 	public void testCoverageResult() {
+		// 10. Nested finally block
+		// Fully covered
+		assertLine("nestedFinally.finally", ICounter.FULLY_COVERED, 0, 1);
+		assertLine("nestedFinally.finally-line", ICounter.FULLY_COVERED, 0, 1);
+		assertLine("nestedFinally.inner-finally", ICounter.FULLY_COVERED, 0, 1);
+		assertLine("nestedFinally.inner-finally-line", ICounter.FULLY_COVERED,
+				0, 1);
+	}
 
+	private void foo() {
 		// 1. Implicit Exception
 		// Currently no coverage at all, as we don't see when a block aborts
 		// somewhere in the middle.
@@ -96,10 +105,7 @@ public class ExceptionsTest extends ValidationTestBase {
 
 		// 9. Finally block conditional coverage
 		// Fully covered
-		// Can't test instruction coverage because there is only an instruction
-		// on this line if the finally block duplicate is the one which isn't
-		// excluded which depends on the compiler specific emitted bytecode.
-		// assertLine("finallyBranchCoverage.finally", ICounter.FULLY_COVERED);
+		assertLine("finallyBranchCoverage.finally", ICounter.FULLY_COVERED);
 		assertLine("finallyBranchCoverage.cond1", ICounter.FULLY_COVERED, 0, 2);
 		assertLine("finallyBranchCoverage.contents1", ICounter.FULLY_COVERED);
 		assertLine("finallyBranchCoverage.cond2", ICounter.FULLY_COVERED, 0, 2);
