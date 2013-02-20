@@ -23,10 +23,6 @@ import org.jacoco.core.test.validation.targets.Stubs.StubException;
 public class Target03 implements Runnable {
 
 	public void run() {
-		nestedFinally();
-	}
-
-	private void foo() {
 		try {
 			implicitException();
 		} catch (StubException e) {
@@ -53,6 +49,7 @@ public class Target03 implements Runnable {
 			finallyBranchCoverage(true, false);
 		} catch (StubException e) {
 		}
+		nestedFinally();
 	}
 
 	private void implicitException() {
