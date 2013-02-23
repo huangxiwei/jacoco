@@ -732,10 +732,17 @@ public class MethodAnalyzer extends MethodProbesVisitor {
 						methodInsnPointers[ii] += 1;
 					}
 				}
-				if (isInsnAtom(methodInsnPointers[methodInsnPointers.length - 1] + 1)) {
-					methodInsnPointers[methodInsnPointers.length - 1] += 1;
+				final int maxPointer = methodAtoms.size() - 1;
+				final int finalPointerIndex = methodInsnPointers.length - 1;
+				final int finalPointer = methodInsnPointers[finalPointerIndex];
+				if (finalPointer <= (maxPointer - 1)
+						&& isInsnAtom(finalPointer + 1)) {
+					methodInsnPointers[finalPointerIndex] += 1;
+				} else if (finalPointer <= (maxPointer - 2)
+						&& isInsnAtom(finalPointer + 2)) {
+					methodInsnPointers[finalPointerIndex] += 2;
 				} else {
-					methodInsnPointers[methodInsnPointers.length - 1] -= 1;
+					methodInsnPointers[finalPointerIndex] -= 1;
 				}
 				disableCoverageOfNonPrimaryFinallyBlock(methodInsnPointers,
 						isFirstInBlock);
@@ -758,6 +765,9 @@ public class MethodAnalyzer extends MethodProbesVisitor {
 						}
 					} else {
 						methodInsnPointers[ii] += 2;
+						if (!isInsnAtom(methodInsnPointers[ii])) {
+							methodInsnPointers[ii] += 1;
+						}
 					}
 				}
 				disableCoverageOfNonPrimaryFinallyBlock(methodInsnPointers,
@@ -864,7 +874,7 @@ public class MethodAnalyzer extends MethodProbesVisitor {
 	private void disableCoverageOfNonPrimaryFinallyBlock(
 			final int[] finallyBlockPointers, final boolean[] isFirstInBlock) {
 		for (int ii = 0; ii < finallyBlockPointers.length; ii++) {
-			if (!isFirstInBlock[ii]) {
+			if (!isFirstInBlock[ii] && isInsnAtom(finallyBlockPointers[ii])) {
 				methodAtoms.get(finallyBlockPointers[ii]).instruction.disable();
 			}
 		}

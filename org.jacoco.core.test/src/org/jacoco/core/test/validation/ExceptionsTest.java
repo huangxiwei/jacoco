@@ -95,7 +95,9 @@ public class ExceptionsTest extends ValidationTestBase {
 
 		// 9. Finally block conditional coverage
 		// Fully covered
-		assertLine("finallyBranchCoverage.finally", ICounter.FULLY_COVERED);
+		// When compiled from maven no instructions are tagged as being on this
+		// line
+		// assertLine("finallyBranchCoverage.finally", ICounter.FULLY_COVERED);
 		assertLine("finallyBranchCoverage.cond1", ICounter.FULLY_COVERED, 0, 2);
 		assertLine("finallyBranchCoverage.contents1", ICounter.FULLY_COVERED);
 		assertLine("finallyBranchCoverage.cond2", ICounter.FULLY_COVERED, 0, 2);
@@ -103,9 +105,13 @@ public class ExceptionsTest extends ValidationTestBase {
 
 		// 10. Nested finally block
 		// Fully covered
-		assertLine("nestedFinally.finally", ICounter.FULLY_COVERED);
+		// When compiled from maven no instructions are tagged as being on this
+		// line
+		// assertLine("nestedFinally.finally", ICounter.FULLY_COVERED);
 		assertLine("nestedFinally.finally-line", ICounter.FULLY_COVERED);
-		assertLine("nestedFinally.inner-finally", ICounter.FULLY_COVERED);
+		// When compiled from maven no instructions are tagged as being on this
+		// line
+		// assertLine("nestedFinally.inner-finally", ICounter.FULLY_COVERED);
 		assertLine("nestedFinally.inner-finally-line", ICounter.FULLY_COVERED);
 	}
 
