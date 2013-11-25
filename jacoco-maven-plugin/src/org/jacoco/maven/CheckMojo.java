@@ -134,7 +134,7 @@ public class CheckMojo extends AbstractJacocoMojo {
 				this.getExcludes());
 		final BundleCreator creator = new BundleCreator(this.getProject(),
 				fileFilter);
-		final IBundleCoverage bundle = creator.createBundle(executionDataStore);
+		final IBundleCoverage bundle = creator.createBundle(executionDataStore,null, false);
 
 		boolean passed = true;
 

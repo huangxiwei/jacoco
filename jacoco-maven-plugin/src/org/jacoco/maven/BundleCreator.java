@@ -21,7 +21,10 @@ import org.codehaus.plexus.util.FileUtils;
 import org.jacoco.core.analysis.Analyzer;
 import org.jacoco.core.analysis.CoverageBuilder;
 import org.jacoco.core.analysis.IBundleCoverage;
+import org.jacoco.core.analysis.IDirectivesParser;
 import org.jacoco.core.data.ExecutionDataStore;
+import org.jacoco.report.DirectorySourceFileLocator;
+import org.jacoco.report.MultiSourceFileLocator;
 
 /**
  * Creates an IBundleCoverage.
@@ -49,15 +52,34 @@ public final class BundleCreator {
 	 * 
 	 * @param executionDataStore
 	 *            the execution data.
+	 * @param encoding
+	 *            encoding for source files
+	 * @param useSourceDirective
 	 * @return the coverage data.
 	 * @throws IOException
 	 */
 	public IBundleCoverage createBundle(
-			final ExecutionDataStore executionDataStore) throws IOException {
+			final ExecutionDataStore executionDataStore, final String encoding,
+			final boolean useSourceDirective) throws IOException {
 		final CoverageBuilder builder = new CoverageBuilder();
-		final Analyzer analyzer = new Analyzer(executionDataStore, builder);
+		final Analyzer analyzer;
 		final File classesDir = new File(this.project.getBuild()
 				.getOutputDirectory());
+
+		if (!useSourceDirective) {
+			analyzer = new Analyzer(executionDataStore, builder);
+		} else {
+
+			final MultiSourceFileLocator locator = new MultiSourceFileLocator(4);
+			for (final Object srcDirectory : project.getCompileSourceRoots()) {
+				final File srcDirFile = new File((String) srcDirectory);
+				locator.add(new DirectorySourceFileLocator(srcDirFile,
+						encoding, 4));
+			}
+			final IDirectivesParser parser = new IDirectivesParser.SourceFileDirectivesParser(
+					locator, false);
+			analyzer = new Analyzer(executionDataStore, builder, parser);
+		}
 
 		@SuppressWarnings("unchecked")
 		final List<File> filesToAnalyze = FileUtils.getFiles(classesDir,

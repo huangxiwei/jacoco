@@ -109,6 +109,13 @@ public class ReportMojo extends AbstractMavenReport {
 	 */
 	private boolean skip;
 
+	/***
+	 * Flag use to open SourceDirective.
+	 * 
+	 * @parameter default-value="true" expression="${jacoco.useSourceDirective}"
+	 */
+
+	private boolean useSourceDirective;
 	/**
 	 * Maven project.
 	 * 
@@ -138,6 +145,13 @@ public class ReportMojo extends AbstractMavenReport {
 
 	public String getDescription(final Locale locale) {
 		return "JaCoCo Test Coverage Report.";
+	}
+
+	/**
+	 * @return whether use source directive
+	 */
+	public boolean isUseSourceDirective() {
+		return useSourceDirective;
 	}
 
 	@Override
@@ -259,7 +273,8 @@ public class ReportMojo extends AbstractMavenReport {
 				this.getExcludes());
 		final BundleCreator creator = new BundleCreator(this.getProject(),
 				fileFilter);
-		final IBundleCoverage bundle = creator.createBundle(executionDataStore);
+		final IBundleCoverage bundle = creator.createBundle(executionDataStore,
+				sourceEncoding, this.isUseSourceDirective());
 
 		final SourceFileCollection locator = new SourceFileCollection(
 				getCompileSourceRoots(), sourceEncoding);
