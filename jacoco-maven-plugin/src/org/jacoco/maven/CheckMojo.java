@@ -178,9 +178,10 @@ public class CheckMojo extends AbstractJacocoMojo implements IViolationsOutput {
 				this.getExcludes());
 		final BundleCreator creator = new BundleCreator(getProject(),
 				fileFilter);
+
 		try {
 			final ExecutionDataStore executionData = loadExecutionData();
-			return creator.createBundle(executionData);
+			return creator.createBundle(executionData, null, false);
 		} catch (final IOException e) {
 			throw new MojoExecutionException(
 					"Error while reading code coverage: " + e.getMessage(), e);
