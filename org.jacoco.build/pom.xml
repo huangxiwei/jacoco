@@ -14,7 +14,7 @@
 
   <groupId>org.jacoco</groupId>
   <artifactId>org.jacoco.build</artifactId>
-  <version>0.6.3-SNAPSHOT</version>
+  <version>0.6.3.cd</version>
   <packaging>pom</packaging>
 
   <name>JaCoCo</name>
@@ -74,6 +74,7 @@
 
   <modules>
     <!-- Order is important: org.jacoco.agent.rt embeds into org.jacoco.agent and JaCoCo Agent used during tests -->
+   
     <module>../org.jacoco.core</module>
     <module>../org.jacoco.report</module>
     <module>../org.jacoco.agent.rt</module>
@@ -82,7 +83,7 @@
 
     <module>../jacoco-maven-plugin</module>
 
-    <module>../org.jacoco.tests</module>
+    <module>../org.jacoco.tests</module> 
 
     <module>../org.jacoco.examples</module>
     <module>../org.jacoco.doc</module>
@@ -100,12 +101,12 @@
   </issueManagement>
   <distributionManagement>
     <repository>
-      <id>sonatype-nexus-staging</id>
-      <name>Nexus Release Repository</name>
-      <url>https://oss.sonatype.org/service/local/staging/deploy/maven2/</url>
+      <id>cloud.nexus.releases</id>
+      <name>Ebay Cloud Repository</name>
+      <url>http://nxrepository.corp.ebay.com/nexus/content/repositories/cloud.releases</url>
     </repository>
     <snapshotRepository>
-      <id>sonatype-nexus-snapshots</id>
+      <id>cloud.nexus.snapshots</id>
       <name>Sonatype Nexus Snapshots</name>
       <url>${sonatypeOssDistMgmtSnapshotsUrl}</url>
     </snapshotRepository>
@@ -113,7 +114,7 @@
 
   <properties>
     <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
-    <sonatypeOssDistMgmtSnapshotsUrl>https://oss.sonatype.org/content/repositories/snapshots/</sonatypeOssDistMgmtSnapshotsUrl>
+    <sonatypeOssDistMgmtSnapshotsUrl>http://nxrepository.corp.ebay.com/nexus/content/repositories/cloud.snapshots</sonatypeOssDistMgmtSnapshotsUrl>
 
     <maven.build.timestamp.format>yyyyMMddhhmm</maven.build.timestamp.format>
     <jacoco.home.url>http://www.eclemma.org/jacoco</jacoco.home.url>
