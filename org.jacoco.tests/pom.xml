@@ -16,7 +16,7 @@
   <parent>
     <groupId>org.jacoco</groupId>
     <artifactId>org.jacoco.build</artifactId>
-    <version>0.6.3-SNAPSHOT</version>
+    <version>0.6.5-SNAPSHOT</version>
     <relativePath>../org.jacoco.build</relativePath>
   </parent>
 
@@ -32,6 +32,7 @@
     <module>../org.jacoco.agent.test</module>
     <module>../org.jacoco.ant.test</module>
     <module>../jacoco-maven-plugin.test</module>
+    <module>../org.jacoco.examples.test</module>
   </modules>
 
   <properties>
@@ -53,6 +54,9 @@
           <includes>
             <include>${jacoco.includes}</include>
           </includes>
+          <excludes>
+            <exclude>${jacoco.excludes}</exclude>
+          </excludes>
         </configuration>
         <executions>
           <execution>

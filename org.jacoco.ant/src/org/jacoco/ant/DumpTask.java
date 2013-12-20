@@ -14,19 +14,14 @@ package org.jacoco.ant;
 import static java.lang.String.format;
 
 import java.io.File;
-import java.io.FileOutputStream;
 import java.io.IOException;
-import java.io.OutputStream;
 import java.net.InetAddress;
-import java.net.Socket;
 
 import org.apache.tools.ant.BuildException;
 import org.apache.tools.ant.Task;
-import org.apache.tools.ant.util.FileUtils;
-import org.jacoco.core.data.ExecutionDataWriter;
 import org.jacoco.core.runtime.AgentOptions;
-import org.jacoco.core.runtime.RemoteControlReader;
-import org.jacoco.core.runtime.RemoteControlWriter;
+import org.jacoco.core.tools.ExecDumpClient;
+import org.jacoco.core.tools.ExecFileLoader;
 
 /**
  * Ant task for remotely controlling an application that is running with the
@@ -34,18 +29,12 @@ import org.jacoco.core.runtime.RemoteControlWriter;
  */
 public class DumpTask extends Task {
 
-	private static final OutputStream NUL = new OutputStream() {
-		@Override
-		public void write(final int b) throws IOException {
-			// nothing to do
-		}
-	};
-
 	private boolean dump = true;
 	private boolean reset = false;
 	private File destfile = null;
 	private String address = AgentOptions.DEFAULT_ADDRESS;
 	private int port = AgentOptions.DEFAULT_PORT;
+	private int retryCount = 10;
 	private boolean append = true;
 
 	/**
@@ -81,6 +70,17 @@ public class DumpTask extends Task {
 	}
 
 	/**
+	 * Number of retries which the goal will attempt to establish a connection.
+	 * This can be used to wait until the target JVM is successfully launched.
+	 * 
+	 * @param retryCount
+	 *            number of retries
+	 */
+	public void setRetryCount(final int retryCount) {
+		this.retryCount = retryCount;
+	}
+
+	/**
 	 * <code>true</code> if the destination file it to be appended to.
 	 * <code>false</code> if the file is to be overwritten
 	 * 
@@ -94,7 +94,7 @@ public class DumpTask extends Task {
 
 	/**
 	 * Sets whether execution data should be downloaded from the remote host.
-	 * Defaults to <code>false</code>
+	 * Defaults to <code>true</code>
 	 * 
 	 * @param dump
 	 *            <code>true</code> to download execution data
@@ -105,7 +105,7 @@ public class DumpTask extends Task {
 
 	/**
 	 * Sets whether a reset command should be sent after the execution data has
-	 * been copied. Defaults to <code>false</code>
+	 * been dumped. Defaults to <code>false</code>
 	 * 
 	 * @param reset
 	 *            <code>true</code> to reset execution data
@@ -126,48 +126,33 @@ public class DumpTask extends Task {
 					getLocation());
 		}
 
-		OutputStream output = null;
+		final ExecDumpClient client = new ExecDumpClient() {
+			@Override
+			protected void onConnecting(final InetAddress address,
+					final int port) {
+				log(format("Connecting to %s:%s", address,
+						Integer.valueOf(port)));
+			}
+
+			@Override
+			protected void onConnectionFailure(final IOException exception) {
+				log(exception.getMessage());
+			}
+		};
+		client.setDump(dump);
+		client.setReset(reset);
+		client.setRetryCount(retryCount);
 
 		try {
-
-			// 1. Open socket connection
-			final Socket socket = new Socket(InetAddress.getByName(address),
-					port);
-			log(format("Connecting to %s", socket.getRemoteSocketAddress()));
-			final RemoteControlWriter remoteWriter = new RemoteControlWriter(
-					socket.getOutputStream());
-			final RemoteControlReader remoteReader = new RemoteControlReader(
-					socket.getInputStream());
-
-			// 2. Open file output
-			output = openOutputStream();
-			final ExecutionDataWriter outputWriter = new ExecutionDataWriter(
-					output);
-			remoteReader.setSessionInfoVisitor(outputWriter);
-			remoteReader.setExecutionDataVisitor(outputWriter);
-
-			// 3. Request dump
-			remoteWriter.visitDumpCommand(dump, reset);
-			remoteReader.read();
-
-			socket.close();
-
+			final ExecFileLoader loader = client.dump(address, port);
+			if (dump) {
+				log(format("Dumping execution data to %s",
+						destfile.getAbsolutePath()));
+				loader.save(destfile, append);
+			}
 		} catch (final IOException e) {
 			throw new BuildException("Unable to dump coverage data", e,
 					getLocation());
-		} finally {
-			FileUtils.close(output);
-		}
-	}
-
-	private OutputStream openOutputStream() throws IOException {
-		if (dump) {
-			log(format("Dumping execution data to %s",
-					destfile.getAbsolutePath()));
-			FileUtils.getFileUtils().createNewFile(destfile, true);
-			return new FileOutputStream(destfile, append);
-		} else {
-			return NUL;
 		}
 	}
 

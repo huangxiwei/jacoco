@@ -17,6 +17,8 @@ import java.io.File;
 import java.util.Arrays;
 import java.util.Collection;
 import java.util.HashMap;
+import java.util.Iterator;
+import java.util.List;
 import java.util.Map;
 import java.util.Properties;
 
@@ -82,8 +84,7 @@ public final class AgentOptions {
 	public static final String DUMPONEXIT = "dumponexit";
 
 	/**
-	 * Specifies the output mode. Default is
-	 * <code>{@link OutputMode#file}</code>.
+	 * Specifies the output mode. Default is {@link OutputMode#file}.
 	 * 
 	 * @see OutputMode#file
 	 * @see OutputMode#tcpserver
@@ -388,6 +389,7 @@ public final class AgentOptions {
 	 * or the port to connect to when output is <code>tcpclient</code>
 	 * 
 	 * @param port
+	 *            port to listen on or connect to
 	 */
 	public void setPort(final int port) {
 		validatePort(port);
@@ -407,7 +409,8 @@ public final class AgentOptions {
 
 	/**
 	 * Sets the hostname or IP address to listen to when output is
-	 * <code>tcpserver</cose> or connect to when output is <code>tcpclient</code>
+	 * <code>tcpserver</code> or connect to when output is
+	 * <code>tcpclient</code>
 	 * 
 	 * @param address
 	 *            Hostname or IP address
@@ -517,8 +520,8 @@ public final class AgentOptions {
 	}
 
 	/**
-	 * Generate required JVM argument string based on current configuration and
-	 * supplied agent jar location
+	 * Generate required JVM argument based on current configuration and
+	 * supplied agent jar location.
 	 * 
 	 * @param agentJarFile
 	 *            location of the JaCoCo Agent Jar
@@ -526,6 +529,43 @@ public final class AgentOptions {
 	 */
 	public String getVMArgument(final File agentJarFile) {
 		return format("-javaagent:%s=%s", agentJarFile, this);
+	}
+
+	/**
+	 * Generate required quoted JVM argument based on current configuration and
+	 * supplied agent jar location.
+	 * 
+	 * @param agentJarFile
+	 *            location of the JaCoCo Agent Jar
+	 * @return Quoted argument to pass to create new VM with coverage enabled
+	 */
+	public String getQuotedVMArgument(final File agentJarFile) {
+		return CommandLineSupport.quote(getVMArgument(agentJarFile));
+	}
+
+	/**
+	 * Generate required quotes JVM argument based on current configuration and
+	 * prepends it to the given argument command line. If a agent with the same
+	 * JAR file is already specified this parameter is removed from the existing
+	 * command line.
+	 * 
+	 * @param arguments
+	 *            existing command line arguments or <code>null</code>
+	 * @param agentJarFile
+	 *            location of the JaCoCo Agent Jar
+	 * @return VM command line arguments prepended with configured JaCoCo agent
+	 */
+	public String prependVMArguments(final String arguments,
+			final File agentJarFile) {
+		final List<String> args = CommandLineSupport.split(arguments);
+		final String plainAgent = format("-javaagent:%s", agentJarFile);
+		for (final Iterator<String> i = args.iterator(); i.hasNext();) {
+			if (i.next().startsWith(plainAgent)) {
+				i.remove();
+			}
+		}
+		args.add(0, getVMArgument(agentJarFile));
+		return CommandLineSupport.quote(args);
 	}
 
 	/**

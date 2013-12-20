@@ -13,12 +13,8 @@ package org.jacoco.agent.rt.internal;
 
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
-import java.lang.management.ManagementFactory;
 import java.net.InetAddress;
-import java.net.UnknownHostException;
-
-import javax.management.ObjectName;
-import javax.management.StandardMBean;
+import java.util.concurrent.Callable;
 
 import org.jacoco.agent.rt.IAgent;
 import org.jacoco.agent.rt.internal.output.FileOutput;
@@ -37,8 +33,6 @@ import org.jacoco.core.runtime.RuntimeData;
  * The agent manages the life cycle of JaCoCo runtime.
  */
 public class Agent implements IAgent {
-
-	private static final String JMX_NAME = "org.jacoco:type=Runtime";
 
 	private static Agent singleton;
 
@@ -84,9 +78,11 @@ public class Agent implements IAgent {
 
 	private final IExceptionLogger logger;
 
+	private final RuntimeData data;
+
 	private IAgentOutput output;
 
-	private final RuntimeData data;
+	private Callable<Void> jmxRegistration;
 
 	/**
 	 * Creates a new agent with the given agent options.
@@ -96,7 +92,7 @@ public class Agent implements IAgent {
 	 * @param logger
 	 *            logger used by this agent
 	 */
-	public Agent(final AgentOptions options, final IExceptionLogger logger) {
+	Agent(final AgentOptions options, final IExceptionLogger logger) {
 		this.options = options;
 		this.logger = logger;
 		this.data = new RuntimeData();
@@ -125,9 +121,7 @@ public class Agent implements IAgent {
 			output = createAgentOutput();
 			output.startup(options, data);
 			if (options.getJmx()) {
-				ManagementFactory.getPlatformMBeanServer().registerMBean(
-						new StandardMBean(this, IAgent.class),
-						new ObjectName(JMX_NAME));
+				jmxRegistration = new JmxRegistration(this);
 			}
 		} catch (final Exception e) {
 			logger.logExeption(e);
@@ -143,9 +137,8 @@ public class Agent implements IAgent {
 				output.writeExecutionData(false);
 			}
 			output.shutdown();
-			if (options.getJmx()) {
-				ManagementFactory.getPlatformMBeanServer().unregisterMBean(
-						new ObjectName(JMX_NAME));
+			if (jmxRegistration != null) {
+				jmxRegistration.call();
 			}
 		} catch (final Exception e) {
 			logger.logExeption(e);
@@ -177,7 +170,9 @@ public class Agent implements IAgent {
 		String host;
 		try {
 			host = InetAddress.getLocalHost().getHostName();
-		} catch (final UnknownHostException e) {
+		} catch (final Exception e) {
+			// Also catch platform specific exceptions (like on Android) to
+			// avoid bailing out here
 			host = "unknownhost";
 		}
 		return host + "-" + AbstractRuntime.createRandomId();

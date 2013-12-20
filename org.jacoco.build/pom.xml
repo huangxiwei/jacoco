@@ -14,7 +14,7 @@
 
   <groupId>org.jacoco</groupId>
   <artifactId>org.jacoco.build</artifactId>
-  <version>0.6.3-SNAPSHOT</version>
+  <version>0.6.5-SNAPSHOT</version>
   <packaging>pom</packaging>
 
   <name>JaCoCo</name>
@@ -36,6 +36,8 @@
     <developer>
       <id>mtnminds</id>
       <name>Marc R. Hoffmann</name>
+      <email>hoffmann@mountainminds.com</email>
+      <timezone>+1</timezone>
       <roles>
         <role>Project Lead</role>
       </roles>
@@ -59,6 +61,15 @@
       <timezone>+3</timezone>
       <roles>
         <role>Build and release manager</role>
+      </roles>
+    </developer>
+    <developer>
+      <id>mfriedenhagen</id>
+      <name>Mirko Friedenhagen</name>
+      <email>mfriedenhagen@gmail.com</email>
+      <timezone>+1</timezone>
+      <roles>
+        <role>Developer</role>
       </roles>
     </developer>
   </developers>
@@ -180,6 +191,11 @@
         <groupId>${project.groupId}</groupId>
         <artifactId>org.jacoco.ant</artifactId>
         <classifier>nodeps</classifier>
+        <version>${project.version}</version>
+      </dependency>
+      <dependency>
+        <groupId>${project.groupId}</groupId>
+        <artifactId>org.jacoco.examples</artifactId>
         <version>${project.version}</version>
       </dependency>
       <!-- Third-party dependencies -->
@@ -352,7 +368,7 @@
         <plugin>
           <groupId>org.apache.maven.plugins</groupId>
           <artifactId>maven-site-plugin</artifactId>
-          <version>3.2</version>
+          <version>3.3</version>
         </plugin>
         <plugin>
           <groupId>org.apache.maven.plugins</groupId>
@@ -499,7 +515,7 @@
             </goals>
             <configuration>
               <target>
-                <fileset dir="${basedir}" includes="**/*.java,**/*.xml,**/*.bsh" excludes="target/**" id="missinglicense.fileset">
+                <fileset dir="${basedir}" includes="**/*.java,**/*.xml,**/*.bsh" excludes="target/**,nb-configuration.xml" id="missinglicense.fileset">
                   <not>
                     <and>
                       <contains text="Copyright (c) 2009, 2013 Mountainminds GmbH &amp; Co. KG and Contributors"/>
@@ -660,6 +676,31 @@
       <properties>
         <jvm.args>-XX:-FailOverToOldVerifier -Xverify:all</jvm.args>
       </properties>
+    </profile>
+    
+    <profile>
+      <id>jdk18</id>
+      <activation>
+        <property>
+          <name>jdk.version</name>
+          <value>1.8</value>
+        </property>
+      </activation>
+      <properties>
+        <jvm.args>-XX:-FailOverToOldVerifier -Xverify:all</jvm.args>
+      </properties>
+      <build>
+        <plugins>
+          <!-- Temporary workaround for jira.codehaus.org/browse/MPLUGIN-244 -->
+          <plugin>
+            <groupId>org.apache.maven.plugins</groupId>
+            <artifactId>maven-javadoc-plugin</artifactId>
+            <configuration>
+              <additionalparam>-Xdoclint:none</additionalparam>
+            </configuration>
+          </plugin>
+        </plugins>
+      </build>
     </profile>
 
     <profile>
