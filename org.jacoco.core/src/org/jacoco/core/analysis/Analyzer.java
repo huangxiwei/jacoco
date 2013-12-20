@@ -19,12 +19,14 @@ import java.io.InputStream;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.StringTokenizer;
+import java.util.zip.GZIPInputStream;
 import java.util.zip.ZipEntry;
 import java.util.zip.ZipInputStream;
 
 import org.jacoco.core.data.ExecutionData;
 import org.jacoco.core.data.ExecutionDataStore;
 import org.jacoco.core.internal.ContentTypeDetector;
+import org.jacoco.core.internal.Pack200Streams;
 import org.jacoco.core.internal.analysis.ClassAnalyzer;
 import org.jacoco.core.internal.analysis.StringPool;
 import org.jacoco.core.internal.analysis.filters.CommentExclusionsCoverageFilter;
@@ -145,9 +147,18 @@ public class Analyzer {
 	 * 
 	 * @param buffer
 	 *            class definitions
+	 * @param name
+	 *            a name used for exception messages
+	 * @throws IOException
+	 *             if the class can't be analyzed
 	 */
-	public void analyzeClass(final byte[] buffer) {
-		analyzeClass(new ClassReader(buffer));
+	public void analyzeClass(final byte[] buffer, final String name)
+			throws IOException {
+		try {
+			analyzeClass(new ClassReader(buffer));
+		} catch (final RuntimeException cause) {
+			throw analyzerError(name, cause);
+		}
 	}
 
 	/**
@@ -155,53 +166,55 @@ public class Analyzer {
 	 * 
 	 * @param input
 	 *            stream to read class definition from
+	 * @param name
+	 *            a name used for exception messages
 	 * @throws IOException
+	 *             if the stream can't be read or the class can't be analyzed
 	 */
-	public void analyzeClass(final InputStream input) throws IOException {
-		analyzeClass(new ClassReader(input));
+	public void analyzeClass(final InputStream input, final String name)
+			throws IOException {
+		try {
+			analyzeClass(new ClassReader(input));
+		} catch (final RuntimeException e) {
+			throw analyzerError(name, e);
+		}
 	}
 
-	/**
-	 * Analyzes all classes contained in the ZIP archive (jar, war, ear, etc.)
-	 * given as an input stream. Contained archives are read recursively.
-	 * 
-	 * @param input
-	 *            ZIP archive data
-	 * @return number of class files found
-	 * @throws IOException
-	 */
-	public int analyzeArchive(final InputStream input) throws IOException {
-		final ZipInputStream zip = new ZipInputStream(input);
-		int count = 0;
-		while (true) {
-			final ZipEntry entry = zip.getNextEntry();
-			if (entry == null) {
-				break;
-			}
-			count += analyzeAll(zip);
-		}
-		return count;
+	private IOException analyzerError(final String name,
+			final RuntimeException cause) {
+		final IOException ex = new IOException(String.format(
+				"Error while analyzing class %s.", name));
+		ex.initCause(cause);
+		return ex;
 	}
 
 	/**
 	 * Analyzes all classes found in the given input stream. The input stream
-	 * may either represent a single class file or a ZIP archive that is
-	 * searched recursively for class files. All other content types are
-	 * ignored.
+	 * may either represent a single class file, a ZIP archive, a Pack200
+	 * archive or a gzip stream that is searched recursively for class files.
+	 * All other content types are ignored.
 	 * 
 	 * @param input
 	 *            input data
+	 * @param name
+	 *            a name used for exception messages
 	 * @return number of class files found
 	 * @throws IOException
+	 *             if the stream can't be read or a class can't be analyzed
 	 */
-	public int analyzeAll(final InputStream input) throws IOException {
+	public int analyzeAll(final InputStream input, final String name)
+			throws IOException {
 		final ContentTypeDetector detector = new ContentTypeDetector(input);
 		switch (detector.getType()) {
 		case ContentTypeDetector.CLASSFILE:
-			analyzeClass(detector.getInputStream());
+			analyzeClass(detector.getInputStream(), name);
 			return 1;
 		case ContentTypeDetector.ZIPFILE:
-			return analyzeArchive(detector.getInputStream());
+			return analyzeZip(detector.getInputStream(), name);
+		case ContentTypeDetector.GZFILE:
+			return analyzeGzip(detector.getInputStream(), name);
+		case ContentTypeDetector.PACK200FILE:
+			return analyzePack200(detector.getInputStream(), name);
 		default:
 			return 0;
 		}
@@ -216,6 +229,7 @@ public class Analyzer {
 	 *            file or folder to look for class files
 	 * @return number of class files found
 	 * @throws IOException
+	 *             if the file can't be read or a class can't be analyzed
 	 */
 	public int analyzeAll(final File file) throws IOException {
 		int count = 0;
@@ -226,7 +240,7 @@ public class Analyzer {
 		} else {
 			final InputStream in = new FileInputStream(file);
 			try {
-				count += analyzeAll(in);
+				count += analyzeAll(in, file.getPath());
 			} finally {
 				in.close();
 			}
@@ -246,6 +260,7 @@ public class Analyzer {
 	 *            entries
 	 * @return number of class files found
 	 * @throws IOException
+	 *             if a file can't be read or a class can't be analyzed
 	 */
 	public int analyzeAll(final String path, final File basedir)
 			throws IOException {
@@ -255,6 +270,27 @@ public class Analyzer {
 			count += analyzeAll(new File(basedir, st.nextToken()));
 		}
 		return count;
+	}
+
+	private int analyzeZip(final InputStream input, final String name)
+			throws IOException {
+		final ZipInputStream zip = new ZipInputStream(input);
+		ZipEntry entry;
+		int count = 0;
+		while ((entry = zip.getNextEntry()) != null) {
+			count += analyzeAll(zip, name + "@" + entry.getName());
+		}
+		return count;
+	}
+
+	private int analyzeGzip(final InputStream input, final String name)
+			throws IOException {
+		return analyzeAll(new GZIPInputStream(input), name);
+	}
+
+	private int analyzePack200(final InputStream input, final String name)
+			throws IOException {
+		return analyzeAll(Pack200Streams.unpack(input), name);
 	}
 
 }

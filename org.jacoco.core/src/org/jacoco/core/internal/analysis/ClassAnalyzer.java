@@ -16,7 +16,12 @@ import org.jacoco.core.analysis.IMethodCoverage;
 import org.jacoco.core.internal.analysis.filters.ICoverageFilterStatus.ICoverageFilter;
 import org.jacoco.core.internal.flow.ClassProbesVisitor;
 import org.jacoco.core.internal.flow.MethodProbesVisitor;
+
 import org.objectweb.asm.MethodVisitor;
+
+import org.jacoco.core.internal.instr.InstrSupport;
+import org.objectweb.asm.FieldVisitor;
+
 import org.objectweb.asm.Opcodes;
 
 /**
@@ -86,6 +91,8 @@ public class ClassAnalyzer extends ClassProbesVisitor {
 	public MethodProbesVisitor visitMethod(final int access, final String name,
 			final String desc, final String signature, final String[] exceptions) {
 
+		InstrSupport.assertNotInstrumented(name, coverage.getName());
+
 		// TODO: Use filter hook
 		if ((access & Opcodes.ACC_SYNTHETIC) != 0) {
 			return null;
@@ -106,6 +113,13 @@ public class ClassAnalyzer extends ClassProbesVisitor {
 		};
 
 		return coverageFilter.visitMethod(name, desc, visitor);
+	}
+
+	@Override
+	public FieldVisitor visitField(final int access, final String name,
+			final String desc, final String signature, final Object value) {
+		InstrSupport.assertNotInstrumented(name, coverage.getName());
+		return super.visitField(access, name, desc, signature, value);
 	}
 
 	@Override
