@@ -14,7 +14,7 @@
 
   <groupId>org.jacoco</groupId>
   <artifactId>org.jacoco.build</artifactId>
-  <version>0.6.3-SNAPSHOT</version>
+  <version>0.6.3.cd</version>
   <packaging>pom</packaging>
 
   <name>JaCoCo</name>
@@ -118,7 +118,7 @@
     <jacoco.home.url>http://www.eclemma.org/jacoco</jacoco.home.url>
     <copyright.years>${project.inceptionYear}, 2013</copyright.years>
 
-    <jvm.args></jvm.args>
+    <jvm.args />
     <argLine>${jvm.args}</argLine>
 
     <!-- Dependencies versions -->
@@ -501,19 +501,19 @@
                 <fileset dir="${basedir}" includes="**/*.java,**/*.xml,**/*.bsh" excludes="target/**" id="missinglicense.fileset">
                   <not>
                     <and>
-                      <contains text="Copyright (c) 2009, 2013 Mountainminds GmbH &amp; Co. KG and Contributors"/>
-                      <contains text="All rights reserved. This program and the accompanying materials"/>
-                      <contains text="are made available under the terms of the Eclipse Public License v1.0"/>
-                      <contains text="which accompanies this distribution, and is available at"/>
-                      <contains text="http://www.eclipse.org/legal/epl-v10.html"/>
+                      <contains text="Copyright (c) 2009, 2013 Mountainminds GmbH &amp; Co. KG and Contributors" />
+                      <contains text="All rights reserved. This program and the accompanying materials" />
+                      <contains text="are made available under the terms of the Eclipse Public License v1.0" />
+                      <contains text="which accompanies this distribution, and is available at" />
+                      <contains text="http://www.eclipse.org/legal/epl-v10.html" />
                     </and>
                   </not>
                 </fileset>
-                <pathconvert property="missing" refid="missinglicense.fileset"/>
+                <pathconvert property="missing" refid="missinglicense.fileset" />
                 <fail message="Invalid license info in: ${missing}">
                   <condition>
                     <not>
-                      <equals arg1="${missing}" arg2=""/>
+                      <equals arg1="${missing}" arg2="" />
                     </not>
                   </condition>
                 </fail>
@@ -716,9 +716,9 @@
                 <phase>generate-resources</phase>
                 <configuration>
                   <target>
-                    <copy file="META-INF/MANIFEST.MF" tofile="${bundle-manifest}" overwrite="true"/>
+                    <copy file="META-INF/MANIFEST.MF" tofile="${bundle-manifest}" overwrite="true" />
                     <replace file="${bundle-manifest}">
-                      <replacefilter token=".qualifier" value=".${buildQualifier}"/>
+                      <replacefilter token=".qualifier" value=".${buildQualifier}" />
                     </replace>
                   </target>
                 </configuration>
@@ -808,7 +808,7 @@
                       <profiles>sign</profiles>
                     </requireActiveProfile>
                     -->
-                    <requireReleaseVersion/>
+                    <requireReleaseVersion />
                     <requireProperty>
                       <property>buildNumber</property>
                       <regex>[0-9a-f]{40}</regex>
@@ -886,7 +886,7 @@
                         </goals>
                       </pluginExecutionFilter>
                       <action>
-                        <ignore></ignore>
+                        <ignore />
                       </action>
                     </pluginExecution>
                     <pluginExecution>
@@ -899,7 +899,7 @@
                         </goals>
                       </pluginExecutionFilter>
                       <action>
-                        <ignore></ignore>
+                        <ignore />
                       </action>
                     </pluginExecution>
                     <pluginExecution>
@@ -912,7 +912,7 @@
                         </goals>
                       </pluginExecutionFilter>
                       <action>
-                        <ignore></ignore>
+                        <ignore />
                       </action>
                     </pluginExecution>
                     <pluginExecution>
@@ -925,7 +925,7 @@
                         </goals>
                       </pluginExecutionFilter>
                       <action>
-                        <ignore></ignore>
+                        <ignore />
                       </action>
                     </pluginExecution>
                     <pluginExecution>
@@ -938,7 +938,7 @@
                         </goals>
                       </pluginExecutionFilter>
                       <action>
-                        <ignore></ignore>
+                        <ignore />
                       </action>
                     </pluginExecution>
                   </pluginExecutions>
