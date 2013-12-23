@@ -90,13 +90,12 @@
   </modules>
 
   <scm>
-    <connection>scm:git:git://github.com/jacoco/jacoco.git</connection>
-    <developerConnection>scm:git:ssh://git@github.com:jacoco/jacoco.git</developerConnection>
-    <url>https://github.com/jacoco/jacoco</url>
+    <connection>scm:git:git://github.com/huangxiwei/jacoco.git</connection>
+    <url>https://github.com/huangxiwei/jacoco</url>
   </scm>
   <issueManagement>
     <system>GitHub</system>
-    <url>https://github.com/jacoco/jacoco/issues</url>
+    <url>https://github.com/huangxiwei/jacoco/issues</url>
   </issueManagement>
   <distributionManagement>
     <repository>
