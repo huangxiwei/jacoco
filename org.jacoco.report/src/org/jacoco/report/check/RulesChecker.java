@@ -18,11 +18,11 @@ import java.util.List;
 
 import org.jacoco.core.analysis.IBundleCoverage;
 import org.jacoco.core.data.ExecutionData;
+import org.jacoco.core.data.ISourceFileLocator;
 import org.jacoco.core.data.SessionInfo;
 import org.jacoco.report.ILanguageNames;
 import org.jacoco.report.IReportGroupVisitor;
 import org.jacoco.report.IReportVisitor;
-import org.jacoco.report.ISourceFileLocator;
 import org.jacoco.report.JavaNames;
 
 /**

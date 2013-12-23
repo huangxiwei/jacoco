@@ -11,6 +11,14 @@
  *******************************************************************************/
 package org.jacoco.core.internal.analysis;
 
+import java.util.ArrayList;
+import java.util.List;
+
+import org.jacoco.core.internal.analysis.filters.CompositeCoverageFilter;
+import org.jacoco.core.internal.analysis.filters.EmptyConstructorCoverageFilter;
+import org.jacoco.core.internal.analysis.filters.ICoverageFilterStatus.ICoverageFilter;
+import org.jacoco.core.internal.analysis.filters.ImplicitEnumMethodsCoverageFilter;
+import org.jacoco.core.internal.analysis.filters.SynchronizedExitCoverageFilter;
 import org.jacoco.core.internal.instr.InstrSupport;
 import org.junit.Before;
 import org.junit.Test;
@@ -25,7 +33,14 @@ public class ClassAnalyzerTest {
 
 	@Before
 	public void setup() {
-		analyzer = new ClassAnalyzer(0x0000, null, new StringPool());
+
+		final List<ICoverageFilter> filters = new ArrayList<ICoverageFilter>();
+		filters.add(new ImplicitEnumMethodsCoverageFilter());
+		filters.add(new EmptyConstructorCoverageFilter());
+		filters.add(new SynchronizedExitCoverageFilter());
+
+		analyzer = new ClassAnalyzer(0x0000, null, new StringPool(),
+				new CompositeCoverageFilter(filters));
 		analyzer.visit(Opcodes.V1_5, Opcodes.ACC_PUBLIC, "Foo", null,
 				"java/lang/Object", null);
 	}
