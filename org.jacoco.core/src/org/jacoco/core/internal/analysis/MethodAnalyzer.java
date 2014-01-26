@@ -266,38 +266,15 @@ public class MethodAnalyzer extends MethodProbesVisitor {
 			if (type == null) {
 				// @formatter:off
 				/*
-				 * Consider the following Java source:
-				 * try {
-				 *   A();
-				 * } catch (Exception ex) {
-				 *   B();
-				 * } finally {
-				 *   C();
-				 * }
+				 * Consider the following Java source: try { A(); } catch
+				 * (Exception ex) { B(); } finally { C(); }
 				 * 
-				 * This may be compiled to the following:
-				 * 0,1.{
-				 *   A();
-				 * 1.} Exception => E.
-				 * 0.} Anything => A.
-				 * => NoEx.
-				 * E,2.{
-				 *   B();
-				 * 2.} Anything => A.
-				 *   C();
-				 *   => End.
-				 * E.}
-				 * A.{
-				 *   C();
-				 *   => End.
-				 * A.}
-				 * NoEx.{
-				 *   C();
-				 *   => End.
-				 * NoEx.}
-				 * End.
+				 * This may be compiled to the following: 0,1.{ A(); 1.}
+				 * Exception => E. 0.} Anything => A. => NoEx. E,2.{ B(); 2.}
+				 * Anything => A. C(); => End. E.} A.{ C(); => End. A.} NoEx.{
+				 * C(); => End. NoEx.} End.
 				 * 
-				 * Note the finally block which starts within a catch block and 
+				 * Note the finally block which starts within a catch block and
 				 * is handled by the same catch anything block at the end.
 				 */
 				// @formatter:on
@@ -926,6 +903,10 @@ public class MethodAnalyzer extends MethodProbesVisitor {
 
 	private void markPrimaryFinallyBlockProbeCovered(
 			final int[] finallyBlockPointers, final boolean[] isFirstInBlock) {
+
+		if (probes == null) {
+			return;
+		}
 		for (int ii = 0; ii < isFirstInBlock.length; ii++) {
 			if (isFirstInBlock[ii]) {
 				final int probeIndex = methodAtoms
@@ -941,6 +922,9 @@ public class MethodAnalyzer extends MethodProbesVisitor {
 
 	private boolean isAnyNonPrimaryProbeCovered(
 			final int[] finallyBlockPointers, final boolean[] isFirstInBlock) {
+		if (probes == null) {
+			return false;
+		}
 		for (int ii = 0; ii < finallyBlockPointers.length; ii++) {
 			if (!isFirstInBlock[ii]) {
 				final int probeIndex = methodAtoms
@@ -1016,71 +1000,25 @@ public class MethodAnalyzer extends MethodProbesVisitor {
 	private Map<Label, List<FinallyBlockStarts>> computeFinallyBlockGroups() {
 		// @formatter:off
 		/*
-		There are (at least) two try/catch block layouts which are used:
-		
-		1) no-exception block at the end:
-		
-		0.{
-		1.{
-		2.{
-		  A()
-		  goto NoEx
-		1.} catch (Ex1) => Ex1:
-		2.} catch (Ex1) => Ex2:
-		Ex1.{
-		  doEx1()
-		0.} catch (Anything) => Anything:
-		  doFinally()
-		  goto AfterTry
-		}
-		Ex2.{
-		3. {
-		  doEx1()
-		3.} catch (Anything) => Anything:
-		  doFinally()
-		  goto AfterTry
-		}
-		Anything.{
-			doFinally()
-			rethrow ex;
-		}
-		NoEx.{
-			doFinally()
-		}
-		AfterTry:
-		
-		2) no-exception block without jump:
-			
-		0.{
-		1.{
-		2.{
-		  A()
-		0.} catch (Anything) =	> Anything:
-		1.} catch (Ex1) => Ex1:
-		2.} catch (Ex1) => Ex2:
-		  doFinally()
-		  goto AfterTry
-		Ex1.{
-		3. {
-		  doEx1()
-		3.} catch (Anything) => Anything:
-		  doFinally()
-		  goto AfterTry
-		}
-		Ex2.{
-		4. {
-		  doEx1()
-		4.} catch (Anything) => Anything:
-		  doFinally()
-		  goto AfterTry
-		}
-		Anything.{
-			doFinally()
-			rethrow ex;
-		}
-		AfterTry:
+		 * There are (at least) two try/catch block layouts which are used:
+		 * 
+		 * 1) no-exception block at the end:
+		 * 
+		 * 0.{ 1.{ 2.{ A() goto NoEx 1.} catch (Ex1) => Ex1: 2.} catch (Ex1) =>
+		 * Ex2: Ex1.{ doEx1() 0.} catch (Anything) => Anything: doFinally() goto
+		 * AfterTry } Ex2.{ 3. { doEx1() 3.} catch (Anything) => Anything:
+		 * doFinally() goto AfterTry } Anything.{ doFinally() rethrow ex; }
+		 * NoEx.{ doFinally() } AfterTry:
+		 * 
+		 * 2) no-exception block without jump:
+		 * 
+		 * 0.{ 1.{ 2.{ A() 0.} catch (Anything) = > Anything: 1.} catch (Ex1) =>
+		 * Ex1: 2.} catch (Ex1) => Ex2: doFinally() goto AfterTry Ex1.{ 3. {
+		 * doEx1() 3.} catch (Anything) => Anything: doFinally() goto AfterTry }
+		 * Ex2.{ 4. { doEx1() 4.} catch (Anything) => Anything: doFinally() goto
+		 * AfterTry } Anything.{ doFinally() rethrow ex; } AfterTry:
 		 */
-		
+
 		// @formatter:on
 
 		// finally block duplicates:
